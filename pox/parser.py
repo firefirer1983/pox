@@ -1,3 +1,4 @@
+from pox.token import key_words
 import logging
 
 from .token import Token, TokenType
@@ -5,6 +6,18 @@ from .err import pox_error
 
 
 logger = logging.getLogger(__name__)
+
+
+def is_digit(c: str) -> bool:
+    return "0" <= c <= "9"
+
+
+def is_alpha(c: str) -> bool:
+    return "A" <= c <= "Z" or "a" <= c <= "z" or c == "_"
+
+
+def is_alpha_or_number(c: str) -> bool:
+    return is_digit(c) or is_alpha(c)
 
 
 class Parser:
@@ -23,7 +36,7 @@ class Parser:
         return token
 
     def add_string_literal(self) -> Token:
-        string = ""
+
         while True:
             if self.peek() == '"':
                 self.advance()
@@ -33,10 +46,8 @@ class Parser:
                 pox_error(self.line, f'line: {self.line} 缺少"')
                 return
 
-            char = self.advance()
-            if char == "\n":
+            if self.advance() == "\n":
                 self.line += 1
-            string += char
 
         token = Token(
             self.source[self.start + 1 : self.current - 1],
@@ -49,86 +60,97 @@ class Parser:
 
     def add_digit_literal(self) -> Token:
         while not self.is_end():
-            if not (self.is_digit(self.peek()) or self.peek() == "."):
+            if not (is_digit(self.peek()) or self.peek() == "."):
                 break
             self.advance()
             continue
-        token = Token(self.source[self.start: self.current], TokenType.NUMBER, None, self.line)
+        token = Token(
+            self.source[self.start : self.current], TokenType.NUMBER, None, self.line
+        )
         self.tokens.append(token)
 
+    def add_identifier(self) -> Token:
+        while not self.is_end():
+            if not is_alpha_or_number(self.peek()):
+                break
+            self.advance()
 
+        token_type = (
+            key_words.get(self.source[self.start : self.current])
+            or TokenType.IDENTIFIER
+        )
+        self.add_token(token_type)
 
     def scan_tokens(self) -> list[Token]:
         while not self.is_end():
-            char = self.advance()
-            if char == "(":
+            c = self.advance()
+            if c == "(":
                 self.add_token(TokenType.LEFT_PAREN)
-            elif char == ")":
+            elif c == ")":
                 self.add_token(TokenType.RIGHT_PAREN)
-            elif char == "{":
+            elif c == "{":
                 self.add_token(TokenType.LEFT_BRACE)
-            elif char == "}":
+            elif c == "}":
                 self.add_token(TokenType.RIGHT_BRACE)
-            elif char == ",":
+            elif c == ",":
                 self.add_token(TokenType.COMMA)
-            elif char == ".":
+            elif c == ".":
                 self.add_token(TokenType.DOT)
-            elif char == "-":
+            elif c == "-":
                 self.add_token(TokenType.MINUS)
-            elif char == "+":
+            elif c == "+":
                 self.add_token(TokenType.PLUS)
-            elif char == ";":
+            elif c == ";":
                 self.add_token(TokenType.SEMICOLON)
-            elif char == "/" and self.match("/"):
+            elif c == "/" and self.match("/"):
                 comment = ""
                 while not self.is_end() and self.peek() != "\n":
                     comment += self.advance()
                 logger.info(f"COMMENT: {comment}")
                 self.line += 1
-            elif char == "/":
+            elif c == "/":
                 self.add_token(TokenType.SLASH)
-            elif char == "*":
+            elif c == "*":
                 self.add_token(TokenType.STAR)
-            elif char == "!":
+            elif c == "!":
                 if self.match("="):
                     self.add_token(TokenType.BANG_EQUAL)
                 else:
                     self.add_token(TokenType.BANG)
-            elif char == "=":
+            elif c == "=":
                 if self.match("="):
                     self.add_token(TokenType.EQUAL_EQUAL)
                 else:
                     self.add_token(TokenType.EQUAL)
-            elif char == ">":
+            elif c == ">":
                 if self.match("="):
                     self.add_token(TokenType.GREATER_EQUAL)
                 else:
                     self.add_token(TokenType.GREATER)
-            elif char == "<":
+            elif c == "<":
                 if self.match("="):
                     self.add_token(TokenType.LESS_EQUAL)
                 else:
                     self.add_token(TokenType.LESS)
-            elif char in (" ", "\t", "\r"):
-                self.start = self.current
-            elif char == "\n":
+            elif c in (" ", "\t", "\r"):
+                pass
+            elif c == "\n":
                 self.line += 1
-            elif char == '"':
+            elif c == '"':
                 self.add_string_literal()
-            elif self.is_digit(char):
+            elif is_digit(c):
                 self.add_digit_literal()
+            elif is_alpha(c):
+                self.add_identifier()
             else:
                 pox_error(
                     self.line,
-                    f"错误的字符: {char} at line:{self.line}, column: {self.current}",
+                    f"错误的字符: {c} at line:{self.line}, column: {self.current}",
                 )
                 break
             self.start = self.current
 
         return self.tokens
-
-    def is_digit(self) -> bool:
-        return "0" <= self.source[self.current] <= "9"
 
     def is_end(self) -> bool:
         return self.current >= len(self.source)

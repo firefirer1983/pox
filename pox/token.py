@@ -64,3 +64,22 @@ class Token:
 
     def __str__(self) -> str:
         return repr(self)
+
+key_words: dict[str, TokenType] = {
+    "or": TokenType.OR,
+    "and": TokenType.AND,
+    "class": TokenType.CLASS,
+    "if": TokenType.IF,
+    "else": TokenType.ELSE,
+    "fun": TokenType.FUN,
+    "for": TokenType.FOR,
+    "nil": TokenType.NIL,
+    "return": TokenType.RETURN,
+    "super": TokenType.SUPER,
+    "this": TokenType.THIS,
+    "true": TokenType.TRUE,
+    "false": TokenType.FALSE,
+    "while": TokenType.WHILE,
+    "var": TokenType.VAR,
+    "print": TokenType.PRINT
+}
