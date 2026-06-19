@@ -54,5 +54,8 @@ class TestParseSingleToken:
         assert tokens[6].token_type == TokenType.MINUS
         assert tokens[7].token_type == TokenType.PLUS
         assert tokens[8].token_type == TokenType.SEMICOLON
-        breakpoint()
         assert tokens[9].token_type == TokenType.STAR
+
+    def test_scan_string_tokens(self):
+        assert Parser('"abc"').scan_tokens()[0].token_type == TokenType.STRING
+        assert Parser('"abc"').scan_tokens()[0].lexeme == "abc"
