@@ -12,70 +12,76 @@ class Parser:
         self.current = 0
         self.start = 0
         self.line = 1
+        self.tokens: list[Token] = list()
+
+    def add_token(self, token_type: TokenType) -> Token:
+        token = Token(self.source[self.start: self.current], token_type, None, self.line)
+        self.tokens.append(token)
+        self.start = self.current
+        return token
 
     def scan_tokens(self) -> list[Token]:
-        tokens: list[Token] = list()
         while not self.is_end():
             char = self.advance()
             if char == '(':
-                tokens.append(Token(char, TokenType.LEFT_PAREN, None, self.line))
+                self.add_token(TokenType.LEFT_PAREN)
             elif char == ')':
-                tokens.append(Token(char, TokenType.RIGHT_PAREN, None, self.line))
+                self.add_token(TokenType.RIGHT_PAREN)
             elif char == "{":
-                tokens.append(Token(char, TokenType.LEFT_BRACE, None, self.line))
+                self.add_token(TokenType.LEFT_BRACE)
             elif char == "}":
-                tokens.append(Token(char, TokenType.RIGHT_BRACE, None, self.line))
+                self.add_token(TokenType.RIGHT_BRACE)
             elif char == ",":
-                tokens.append(Token(char, TokenType.COMMA, None, self.line))
+                self.add_token(TokenType.COMMA)
             elif char == ".":
-                tokens.append(Token(char, TokenType.DOT, None, self.line))
+                self.add_token(TokenType.DOT)
             elif char == "-":
-                tokens.append(Token(char, TokenType.MINUS, None, self.line))
+                self.add_token(TokenType.MINUS)
             elif char == "+":
-                tokens.append(Token(char, TokenType.PLUS, None, self.line))
+                self.add_token(TokenType.PLUS)
             elif char == ";":
-                tokens.append(Token(char, TokenType.SEMICOLON, None, self.line))
+                self.add_token(TokenType.SEMICOLON)
             elif char == "/" and self.match("/"):
                 comment = ""
                 while not self.is_end() and self.peek() != "\n":
                     comment += self.advance()
                 logger.info(f"COMMENT: {comment}")
+                self.line += 1
             elif char == "/":
-                tokens.append(Token(char, TokenType.SLASH, None, self.line))
+                self.add_token(TokenType.SLASH)
             elif char == "*":
-                tokens.append(Token(char, TokenType.STAR, None, self.line))
+                self.add_token(TokenType.STAR)
             elif char == "!":
-                token_type = TokenType.BANG
                 if self.match("="):
-                    token_type = TokenType.BANG_EQUAL
-                tokens.append(Token(char, token_type, None, self.line))
+                    self.add_token(TokenType.BANG_EQUAL)
+                else:
+                    self.add_token(TokenType.BANG)
             elif char == "=":
-                token_type = TokenType.EQUAL
                 if self.match("="):
-                    token_type = TokenType.EQUAL_EQUAL
-                tokens.append(Token(char, token_type, None, self.line))
+                    self.add_token(TokenType.EQUAL_EQUAL)
+                else:
+                    self.add_token(TokenType.EQUAL)
             elif char == ">":
-                token_type = TokenType.GREATER
                 if self.match("="):
-                    token_type = TokenType.GREATER_EQUAL
-                tokens.append(Token(char, token_type, None, self.line))
+                    self.add_token(TokenType.GREATER_EQUAL)
+                else:
+                    self.add_token(TokenType.GREATER)
             elif char == "<":
-                token_type = TokenType.LESS
                 if self.match("="):
-                    token_type = TokenType.LESS_EQUAL
-                tokens.append(Token(char, token_type, None, self.line))
+                    self.add_token(TokenType.LESS_EQUAL)
+                else:
+                    self.add_token(TokenType.LESS)
             elif char in (" ", "\t", "\r"):
                 pass
             elif char == "\n":
-                self.line = self.line + 1
+                self.line += 1
             else:
                 pox_error(
                     self.line,
                     f"错误的字符: {char} at line:{self.line}, column: {self.current}",
                 )
                 break
-
-        return tokens
+        return self.tokens
 
     def is_end(self) -> bool:
         return self.current >= len(self.source)

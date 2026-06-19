@@ -39,16 +39,20 @@ class TestParseSingleToken:
         assert len(Parser("//?as7ufoasdksadfk\n").scan_tokens()) == 0
         assert Parser("(//?as7ufoasdksadfk\n").scan_tokens()[0].token_type == TokenType.LEFT_PAREN
 
-    # def test_scan_single_char_tokens(self):
-    #     source = "(){},.-+;*"
-    #     parser = Parser(source)
-    #     tokens = parser.scan_tokens()
+    def test_scan_single_char_tokens(self):
+        source = "(){},.-+;*"
+        parser = Parser(source)
+        tokens = parser.scan_tokens()
 
-    #     assert len(tokens) == 10
-    #     assert tokens[0].token_type == TokenType.LEFT_PAREN
-    #     assert tokens[1].token_type == TokenType.RIGHT_PAREN
-
-    # def test_scan_empty_source(self):
-    #     parser = Parser("")
-    #     tokens = parser.scan_tokens()
-    #     assert len(tokens) == 0
+        assert len(tokens) == 10
+        assert tokens[0].token_type == TokenType.LEFT_PAREN
+        assert tokens[1].token_type == TokenType.RIGHT_PAREN
+        assert tokens[2].token_type == TokenType.LEFT_BRACE
+        assert tokens[3].token_type == TokenType.RIGHT_BRACE
+        assert tokens[4].token_type == TokenType.COMMA
+        assert tokens[5].token_type == TokenType.DOT
+        assert tokens[6].token_type == TokenType.MINUS
+        assert tokens[7].token_type == TokenType.PLUS
+        assert tokens[8].token_type == TokenType.SEMICOLON
+        breakpoint()
+        assert tokens[9].token_type == TokenType.STAR
