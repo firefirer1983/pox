@@ -51,6 +51,11 @@ class Literal(Expr):
     #     return visitor.visit(self)
 
 
+class Grouping(Expr):
+    def __init__(self, expr: Expr):
+        self.expr = expr
+
+
 class AstPrinter(Visitor):
     @singledispatchmethod
     def visit(self, expr: Expr) -> str:
@@ -69,6 +74,73 @@ class AstPrinter(Visitor):
     @visit.register
     def _(self, expr: Unary) -> str:
         return f"{expr.operator.lexeme}{self.visit(expr.right)}"
+
+    @visit.register
+    def _(self, expr: Grouping) -> str:
+        return f"({self.visit(expr.expr)})"
+
+
+class Interpreter(Visitor):
+    @singledispatchmethod
+    def visit(self, expr: Expr) -> LiteralTypes:
+        raise NotImplementedError(type(expr))
+
+    @visit.register
+    def _(self, expr: Binary) -> LiteralTypes:
+        left = self.visit(expr.left)
+        right = self.visit(expr.right)
+        match expr.operator.token_type:
+            case TokenType.GREATER:
+                # pyrefly:ignore[unsupported-operation]
+                return left > right
+            case TokenType.GREATER_EQUAL:
+                # pyrefly:ignore[unsupported-operation]
+                return left >= right
+            case TokenType.LESS:
+                # pyrefly:ignore[unsupported-operation]
+                return left < right
+            case TokenType.LESS_EQUAL:
+                # pyrefly:ignore[unsupported-operation]
+                return left <= right
+            case TokenType.PLUS:
+                # pyrefly:ignore[unsupported-operation]
+                return left + right
+            case TokenType.MINUS:
+                # pyrefly:ignore[unsupported-operation]
+                return left - right
+            case TokenType.STAR:
+                # pyrefly:ignore[unsupported-operation]
+                return left * right
+            case TokenType.SLASH:
+                # pyrefly:ignore[unsupported-operation]
+                return left / right
+            case TokenType.BANG_EQUAL:
+                # pyrefly:ignore[unsupported-operation]
+                return left != right
+            case TokenType.EQUAL_EQUAL:
+                # pyrefly:ignore[unsupported-operation]
+                return left == right
+            case _:
+                raise RuntimeError()
+
+    @visit.register
+    def _(self, expr: Literal) -> LiteralTypes:
+        return expr.value
+
+    @visit.register
+    def _(self, expr: Unary) -> LiteralTypes:
+        right = self.visit(expr.right)
+        if expr.operator.token_type == TokenType.MINUS:
+            if not isinstance(right, (float, int)):
+                raise RuntimeError
+            return -1 * right
+        elif expr.operator.token_type == TokenType.BANG:
+            return bool(right)
+        raise RuntimeError
+
+    @visit.register
+    def _(self, expr: Grouping) -> LiteralTypes:
+        return self.visit(expr.expr)
 
 
 class Parser:
@@ -166,7 +238,7 @@ class Parser:
         if self.match_any(TokenType.LEFT_PAREN):
             expr = self.expression()
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expressoin")
-            return expr
+            return Grouping(expr)
         raise RuntimeError
 
     def equality(self) -> Expr:
