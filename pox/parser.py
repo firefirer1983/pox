@@ -1,171 +1,180 @@
-from pox.token import key_words
-import logging
-
+from typing import Any
 from .token import Token, TokenType
-from .err import pox_error
+from enum import StrEnum
+import abc
+from abc import ABC, abstractmethod
+from functools import singledispatchmethod
+
+LiteralTypes = bool | str | int | float | None
 
 
-logger = logging.getLogger(__name__)
+class ExpressType(StrEnum):
+    Binary = "Binary"
+    Unary = "Unary"
 
 
-def is_digit(c: str) -> bool:
-    return "0" <= c <= "9"
+class Visitor(abc.ABC):
+    @abstractmethod
+    def visit(self, expr) -> Any:
+        raise NotImplementedError()
 
 
-def is_alpha(c: str) -> bool:
-    return "A" <= c <= "Z" or "a" <= c <= "z" or c == "_"
+class Expr(ABC):
+    def accept(self, visitor: Visitor):
+        return visitor.visit(self)
 
 
-def is_alpha_or_number(c: str) -> bool:
-    return is_digit(c) or is_alpha(c)
+class Binary(Expr):
+    def __init__(self, left: Expr, operator: Token, right: Expr):
+        self.left = left
+        self.operator = operator
+        self.right = right
+
+    # def accept(self, visitor: Expr.Visitor):
+    #     return visitor.visit(self)
+
+
+class Unary(Expr):
+    def __init__(self, operator: Token, right: Expr):
+        self.operator = operator
+        self.right = right
+
+    # def accept(self, visitor: Expr.Visitor):
+    #     return visitor.visit(self)
+
+
+class Literal(Expr):
+    def __init__(self, value: LiteralTypes):
+        self.value = value
+
+    # def accept(self, visitor: Expr.Visitor):
+    #     return visitor.visit(self)
+
+
+class AstPrinter(Visitor):
+    @singledispatchmethod
+    def visit(self, expr: Expr) -> str:
+        raise NotImplementedError(type(expr))
+
+    @visit.register
+    def _(self, expr: Binary) -> str:
+        return (
+            f"({expr.operator.lexeme} {self.visit(expr.left)} {self.visit(expr.right)})"
+        )
+
+    @visit.register
+    def _(self, expr: Literal) -> str:
+        return f"{expr.value}"
+
+    @visit.register
+    def _(self, expr: Unary) -> str:
+        return f"{expr.operator.lexeme}{self.visit(expr.right)}"
 
 
 class Parser:
-    def __init__(self, source: str):
-        self.source = source
-        self.current = 0
-        self.start = 0
-        self.line = 1
-        self.tokens: list[Token] = list()
+    def __init__(self, tokens: list[Token]):
+        self.tokens = tokens
+        self.start = self.current = 0
 
-    def add_token(self, token_type: TokenType) -> Token:
-        token = Token(
-            self.source[self.start : self.current], token_type, None, self.line
-        )
-        self.tokens.append(token)
-        return token
-
-    def add_string_literal(self) -> Token:
-
-        while True:
-            if self.peek() == '"':
-                self.advance()
-                break
-
-            if self.is_end():
-                pox_error(self.line, f'line: {self.line} 缺少"')
-                return
-
-            if self.advance() == "\n":
-                self.line += 1
-
-        token = Token(
-            self.source[self.start + 1 : self.current - 1],
-            TokenType.STRING,
-            None,
-            self.line,
-        )
-        self.tokens.append(token)
-        return token
-
-    def add_digit_literal(self) -> Token:
-        while not self.is_end():
-            if not (is_digit(self.peek()) or self.peek() == "."):
-                break
-            self.advance()
-            continue
-        token = Token(
-            self.source[self.start : self.current], TokenType.NUMBER, None, self.line
-        )
-        self.tokens.append(token)
-
-    def add_identifier(self) -> Token:
-        while not self.is_end():
-            if not is_alpha_or_number(self.peek()):
-                break
-            self.advance()
-
-        token_type = (
-            key_words.get(self.source[self.start : self.current])
-            or TokenType.IDENTIFIER
-        )
-        self.add_token(token_type)
-
-    def scan_tokens(self) -> list[Token]:
-        while not self.is_end():
-            c = self.advance()
-            if c == "(":
-                self.add_token(TokenType.LEFT_PAREN)
-            elif c == ")":
-                self.add_token(TokenType.RIGHT_PAREN)
-            elif c == "{":
-                self.add_token(TokenType.LEFT_BRACE)
-            elif c == "}":
-                self.add_token(TokenType.RIGHT_BRACE)
-            elif c == ",":
-                self.add_token(TokenType.COMMA)
-            elif c == ".":
-                self.add_token(TokenType.DOT)
-            elif c == "-":
-                self.add_token(TokenType.MINUS)
-            elif c == "+":
-                self.add_token(TokenType.PLUS)
-            elif c == ";":
-                self.add_token(TokenType.SEMICOLON)
-            elif c == "/" and self.match("/"):
-                comment = ""
-                while not self.is_end() and self.peek() != "\n":
-                    comment += self.advance()
-                logger.info(f"COMMENT: {comment}")
-                self.line += 1
-            elif c == "/":
-                self.add_token(TokenType.SLASH)
-            elif c == "*":
-                self.add_token(TokenType.STAR)
-            elif c == "!":
-                if self.match("="):
-                    self.add_token(TokenType.BANG_EQUAL)
-                else:
-                    self.add_token(TokenType.BANG)
-            elif c == "=":
-                if self.match("="):
-                    self.add_token(TokenType.EQUAL_EQUAL)
-                else:
-                    self.add_token(TokenType.EQUAL)
-            elif c == ">":
-                if self.match("="):
-                    self.add_token(TokenType.GREATER_EQUAL)
-                else:
-                    self.add_token(TokenType.GREATER)
-            elif c == "<":
-                if self.match("="):
-                    self.add_token(TokenType.LESS_EQUAL)
-                else:
-                    self.add_token(TokenType.LESS)
-            elif c in (" ", "\t", "\r"):
-                pass
-            elif c == "\n":
-                self.line += 1
-            elif c == '"':
-                self.add_string_literal()
-            elif is_digit(c):
-                self.add_digit_literal()
-            elif is_alpha(c):
-                self.add_identifier()
-            else:
-                pox_error(
-                    self.line,
-                    f"错误的字符: {c} at line:{self.line}, column: {self.current}",
-                )
-                break
-            self.start = self.current
-
-        return self.tokens
+    def peek(self) -> Token:
+        return self.tokens[self.current]
 
     def is_end(self) -> bool:
-        return self.current >= len(self.source)
+        return (
+            len(self.tokens) == self.current or self.peek().token_type == TokenType.EOF
+        )
 
-    def peek(self) -> str:
-        return self.source[self.current]
+    def is_begining(self):
+        return self.current == 0
 
-    def advance(self) -> str:
-        char = self.source[self.current]
-        self.current += 1
-        return char
+    def check(self, token_type: TokenType) -> bool:
+        if self.is_end():
+            return False
+        return self.peek().token_type == token_type
 
-    def match(self, expected: str) -> bool:
-        if self.is_end() or self.source[self.current] != expected:
+    def previous(self) -> Token:
+        return self.tokens[self.current - 1]
+
+    def advance(self) -> Token:
+        if not self.is_end():
+            self.current += 1
+        return self.previous()
+
+    def match_any(self, *expected_types: TokenType) -> bool:
+        if self.is_end():
             return False
 
-        self.current += 1
-        return True
+        for token_type in expected_types:
+            if not self.check(token_type):
+                continue
+            self.advance()
+            return True
+        return False
+
+    def consume(self, expect_type: TokenType, err: str):
+        if self.check(expect_type):
+            self.advance()
+        raise RuntimeError(err)
+
+    def expression(self) -> Expr:
+        return self.equality()
+
+    def comparision(self) -> Expr:
+        expr = self.term()
+        while self.match_any(
+            TokenType.GREATER,
+            TokenType.GREATER_EQUAL,
+            TokenType.LESS,
+            TokenType.LESS_EQUAL,
+        ):
+            operator = self.previous()
+            right = self.term()
+            expr = Binary(expr, operator, right)
+        return expr
+
+    def term(self) -> Expr:
+        expr = self.factor()
+        while self.match_any(TokenType.PLUS, TokenType.MINUS):
+            operator = self.previous()
+            right = self.factor()
+            expr = Binary(expr, operator, right)
+        return expr
+
+    def factor(self) -> Expr:
+        expr = self.unary()
+        while self.match_any(TokenType.STAR, TokenType.SLASH):
+            operator = self.previous()
+            right = self.unary()
+            expr = Binary(expr, operator, right)
+        return expr
+
+    def unary(self) -> Expr:
+        if self.match_any(TokenType.MINUS, TokenType.BANG):
+            return Unary(self.previous(), self.primary())
+        return self.primary()
+
+    def primary(self) -> Expr:
+        if self.match_any(TokenType.TRUE):
+            return Literal(True)
+        if self.match_any(TokenType.FALSE):
+            return Literal(False)
+        if self.match_any(TokenType.NIL):
+            return Literal(None)
+        if self.match_any(TokenType.NUMBER, TokenType.STRING):
+            return Literal(self.previous().literal)
+
+        if self.match_any(TokenType.LEFT_PAREN):
+            expr = self.expression()
+            self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expressoin")
+            return expr
+        raise RuntimeError
+
+    def equality(self) -> Expr:
+        expr = self.comparision()
+        while self.match_any(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL):
+            right = self.comparision()
+            expr = Binary(expr, self.previous(), right)
+        return expr
+
+    def number(self):
+        return self.peek()
