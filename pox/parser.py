@@ -14,8 +14,9 @@ class ExpressType(StrEnum):
 
 
 class Visitor(abc.ABC):
+    @singledispatchmethod
     @abstractmethod
-    def visit(self, expr) -> Any:
+    def visit(self, expr: "Expr") -> Any:
         raise NotImplementedError()
 
 
