@@ -1,16 +1,10 @@
 from typing import Any
 from .token import Token, TokenType
-from enum import StrEnum
 import abc
 from abc import ABC, abstractmethod
 from functools import singledispatchmethod
 
 LiteralTypes = bool | str | int | float | None
-
-
-class ExpressType(StrEnum):
-    Binary = "Binary"
-    Unary = "Unary"
 
 
 class Visitor(abc.ABC):
