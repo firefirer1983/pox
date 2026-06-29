@@ -1,6 +1,7 @@
 from .base import Expression, LiteralTypes
 from .token import Token
 
+
 class Binary(Expression):
     def __init__(self, left: Expression, operator: Token, right: Expression):
         self.left = left
@@ -33,8 +34,14 @@ class Grouping(Expression):
         self.expr = expr
 
 
+class Variable(Expression):
+    def __init__(self, identify: Token):
+        self.identify = identify
+
+
 class Expr:
     Binary = Binary
     Unary = Unary
     Literal = Literal
     Grouping = Grouping
+    Variable = Variable

@@ -204,6 +204,9 @@ class Parser:
         if self.match_any(TokenType.NUMBER, TokenType.STRING):
             return Expr.Literal(self.previous().literal)
 
+        if self.match_any(TokenType.IDENTIFIER):
+            return Expr.Variable(self.previous())
+
         if self.match_any(TokenType.LEFT_PAREN):
             expr = self.expression()
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expressoin")
