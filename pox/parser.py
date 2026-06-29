@@ -1,87 +1,41 @@
-from typing import Any
 from .token import Token, TokenType
-import abc
-from abc import ABC, abstractmethod
 from functools import singledispatchmethod
-
-LiteralTypes = bool | str | int | float | None
-
-
-class Visitor(abc.ABC):
-    @singledispatchmethod
-    @abstractmethod
-    def visit(self, expr: "Expr") -> Any:
-        raise NotImplementedError()
-
-
-class Expr(ABC):
-    def accept(self, visitor: Visitor):
-        return visitor.visit(self)
-
-
-class Binary(Expr):
-    def __init__(self, left: Expr, operator: Token, right: Expr):
-        self.left = left
-        self.operator = operator
-        self.right = right
-
-    # def accept(self, visitor: Expr.Visitor):
-    #     return visitor.visit(self)
-
-
-class Unary(Expr):
-    def __init__(self, operator: Token, right: Expr):
-        self.operator = operator
-        self.right = right
-
-    # def accept(self, visitor: Expr.Visitor):
-    #     return visitor.visit(self)
-
-
-class Literal(Expr):
-    def __init__(self, value: LiteralTypes):
-        self.value = value
-
-    # def accept(self, visitor: Expr.Visitor):
-    #     return visitor.visit(self)
-
-
-class Grouping(Expr):
-    def __init__(self, expr: Expr):
-        self.expr = expr
+from .base import Visitor, ParseError, LiteralTypes, Expression, Statement
+from .expression import Expr
+from .statement import Stmt
 
 
 class AstPrinter(Visitor):
     @singledispatchmethod
-    def visit(self, expr: Expr) -> str:
+    def visit(self, expr: Expression) -> str:
         raise NotImplementedError(type(expr))
 
     @visit.register
-    def _(self, expr: Binary) -> str:
+    def _(self, expr: Expr.Binary) -> str:
         return (
             f"({expr.operator.lexeme} {self.visit(expr.left)} {self.visit(expr.right)})"
         )
 
     @visit.register
-    def _(self, expr: Literal) -> str:
+    def _(self, expr: Expr.Literal) -> str:
         return f"{expr.value}"
 
     @visit.register
-    def _(self, expr: Unary) -> str:
+    def _(self, expr: Expr.Unary) -> str:
         return f"{expr.operator.lexeme}{self.visit(expr.right)}"
 
     @visit.register
-    def _(self, expr: Grouping) -> str:
+    def _(self, expr: Expr.Grouping) -> str:
         return f"({self.visit(expr.expr)})"
 
 
 class Interpreter(Visitor):
     @singledispatchmethod
-    def visit(self, expr: Expr) -> LiteralTypes:
+    def visit(self, expr: Expression) -> LiteralTypes:
         raise NotImplementedError(type(expr))
 
     @visit.register
-    def _(self, expr: Binary) -> LiteralTypes:
+    def _(self, expr: Expr.Binary) -> LiteralTypes:
         left = self.visit(expr.left)
         right = self.visit(expr.right)
         match expr.operator.token_type:
@@ -116,25 +70,25 @@ class Interpreter(Visitor):
                 # pyrefly:ignore[unsupported-operation]
                 return left == right
             case _:
-                raise RuntimeError()
+                raise ParseError()
 
     @visit.register
-    def _(self, expr: Literal) -> LiteralTypes:
+    def _(self, expr: Expr.Literal) -> LiteralTypes:
         return expr.value
 
     @visit.register
-    def _(self, expr: Unary) -> LiteralTypes:
+    def _(self, expr: Expr.Unary) -> LiteralTypes:
         right = self.visit(expr.right)
         if expr.operator.token_type == TokenType.MINUS:
             if not isinstance(right, (float, int)):
-                raise RuntimeError
+                raise ParseError()
             return -1 * right
         elif expr.operator.token_type == TokenType.BANG:
             return bool(right)
-        raise RuntimeError
+        raise ParseError()
 
     @visit.register
-    def _(self, expr: Grouping) -> LiteralTypes:
+    def _(self, expr: Expr.Grouping) -> LiteralTypes:
         return self.visit(expr.expr)
 
 
@@ -181,12 +135,32 @@ class Parser:
     def consume(self, expect_type: TokenType, err: str):
         if self.check(expect_type):
             self.advance()
-        raise RuntimeError(err)
+        raise ParseError(err)
 
-    def expression(self) -> Expr:
+    def statement(self) -> Statement:
+        if self.match_any(TokenType.PRINT):
+            return self.print_stmt()
+        return self.expr_stmt()
+
+    def expr_stmt(self) -> Stmt.ExprStmt:
+        return Stmt.ExprStmt()
+
+    def print_stmt(self) -> Stmt.PrintStmt:
+        expr = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after expression")
+        return Stmt.PrintStmt(expr)
+
+    def parse(self) -> list[Statement]:
+        statements: list[Statement] = list()
+        while not self.is_end():
+            stmt = self.statement()
+            statements.append(stmt)
+        return statements
+
+    def expression(self) -> Expression:
         return self.equality()
 
-    def comparision(self) -> Expr:
+    def comparision(self) -> Expression:
         expr = self.term()
         while self.match_any(
             TokenType.GREATER,
@@ -196,51 +170,52 @@ class Parser:
         ):
             operator = self.previous()
             right = self.term()
-            expr = Binary(expr, operator, right)
+            expr = Expr.Binary(expr, operator, right)
         return expr
 
-    def term(self) -> Expr:
+    def term(self) -> Expression:
         expr = self.factor()
         while self.match_any(TokenType.PLUS, TokenType.MINUS):
             operator = self.previous()
             right = self.factor()
-            expr = Binary(expr, operator, right)
+            expr = Expr.Binary(expr, operator, right)
         return expr
 
-    def factor(self) -> Expr:
+    def factor(self) -> Expression:
         expr = self.unary()
         while self.match_any(TokenType.STAR, TokenType.SLASH):
             operator = self.previous()
             right = self.unary()
-            expr = Binary(expr, operator, right)
+            expr = Expr.Binary(expr, operator, right)
         return expr
 
-    def unary(self) -> Expr:
+    def unary(self) -> Expression:
         if self.match_any(TokenType.MINUS, TokenType.BANG):
-            return Unary(self.previous(), self.primary())
+            return Expr.Unary(self.previous(), self.primary())
         return self.primary()
 
-    def primary(self) -> Expr:
+    def primary(self) -> Expression:
         if self.match_any(TokenType.TRUE):
-            return Literal(True)
+            return Expr.Literal(True)
         if self.match_any(TokenType.FALSE):
-            return Literal(False)
+            return Expr.Literal(False)
         if self.match_any(TokenType.NIL):
-            return Literal(None)
+            return Expr.Literal(None)
         if self.match_any(TokenType.NUMBER, TokenType.STRING):
-            return Literal(self.previous().literal)
+            return Expr.Literal(self.previous().literal)
 
         if self.match_any(TokenType.LEFT_PAREN):
             expr = self.expression()
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expressoin")
-            return Grouping(expr)
-        raise RuntimeError
+            return Expr.Grouping(expr)
 
-    def equality(self) -> Expr:
+        raise ParseError()
+
+    def equality(self) -> Expression:
         expr = self.comparision()
         while self.match_any(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL):
             right = self.comparision()
-            expr = Binary(expr, self.previous(), right)
+            expr = Expr.Binary(expr, self.previous(), right)
         return expr
 
     def number(self):
