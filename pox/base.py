@@ -5,6 +5,9 @@ from functools import singledispatchmethod
 class ParseError(SyntaxError):
     pass
 
+class RunError(RuntimeError):
+    pass
+
 
 class Visitor(ABC):
     @singledispatchmethod

@@ -39,9 +39,16 @@ class Variable(Expression):
         self.identify = identify
 
 
+class Assign(Expression):
+    def __init__(self, identify: Token, value: Expression):
+        self.identify = identify
+        self.value = value
+
+
 class Expr:
     Binary = Binary
     Unary = Unary
     Literal = Literal
     Grouping = Grouping
     Variable = Variable
+    Assign = Assign
