@@ -88,7 +88,6 @@ class Parser:
         return Stmt.Var(name, initializer)
 
     def block(self) -> Statement:
-        logger.info("BLOCK+1")
         statements = list()
         while not self.check(TokenType.RIGHT_BRACE) and not self.is_end():
             stmt = self.declaration()
