@@ -44,18 +44,26 @@ class TestInterpretExpr:
 
 
 class TestInterpretStmt:
-    def test_var_declaration(self):
+    def test_var_declaration_without_initializer(self):
+        interpreter = Interpreter()
+        stmts = Parser(Scanner("var a;").scan_tokens()).parse()
+        assert len(stmts) == 1
+        interpreter.visit(stmts[0])
+        assert interpreter.get("a") == None
+
+    def test_var_declaration_with_initializer(self):
         interpreter = Interpreter()
         for stmt in Parser(Scanner("var a = 5;").scan_tokens()).parse():
             interpreter.visit(stmt)
             assert interpreter.environment.get("a") == 5
 
-    def test_var_declaration_and_assign(self):
+    def test_var_mix_statements(self):
         interpreter = Interpreter()
-        tokens = Scanner("var a;a=5;").scan_tokens()
-
+        tokens = Scanner("var a;a=5;a=a*3;").scan_tokens()
         stmts = Parser(tokens).parse()
         interpreter.visit(stmts[0])
         assert interpreter.environment.get("a") == None
         interpreter.visit(stmts[1])
         assert interpreter.environment.get("a") == 5
+        interpreter.visit(stmts[2])
+        assert interpreter.environment.get("a") == 15

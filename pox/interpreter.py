@@ -139,3 +139,6 @@ class Interpreter(Visitor):
         if stmt.initializer:
             value = self.visit(stmt.initializer)
         self.environment.define(stmt.name.lexeme, value)
+
+    def get(self, name: str) -> LiteralTypes:
+        return self.environment.get(name)
