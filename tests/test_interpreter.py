@@ -97,10 +97,10 @@ class TestInterpretStmt:
 
     def test_nested_block(self):
         interpreter = Interpreter()
-        tokens = Scanner("var a=5;{a=3;}").scan_tokens()
+        tokens = Scanner("var a=5;{a=3;{a=2;}}").scan_tokens()
         stmts = Parser(tokens).parse()
         assert len(stmts)== 2
         interpreter.visit(stmts[0])
         assert global_env.get("a") == 5
         interpreter.visit(stmts[1])
-        assert global_env.get("a") == 3
+        assert global_env.get("a") == 2

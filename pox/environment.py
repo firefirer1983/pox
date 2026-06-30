@@ -18,7 +18,7 @@ class Environment:
         while env:
             if name in env.vars:
                 return env.vars[name]
-            env = self.enclosing
+            env = env.enclosing
         raise RunError(f"Variable get {name} not found!")
 
     def assign(self, name: str, value: LiteralTypes):
@@ -27,7 +27,7 @@ class Environment:
             if name in env.vars.keys():
                 env.vars[name] = value
                 return
-            env = self.enclosing
+            env = env.enclosing
         raise RunError(f"Variable assign {name} not found!")
 
 
