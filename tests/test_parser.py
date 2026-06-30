@@ -1,4 +1,4 @@
-from pox.interpreter import Interpreter, AstPrinter
+from pox.interpreter import AstPrinter
 from pox.scanner import Scanner
 from pox.parser import Parser
 
@@ -57,6 +57,7 @@ class TestAstPrinter:
 
     def test_parse_block_stmt(self):
         tokens = Scanner("{var a = 5;}").scan_tokens()
+
         stmts = Parser(tokens).parse()
         assert len(stmts) == 1
-        assert AstPrinter().visit(stmts[0]) == "var a=5;"
+        assert AstPrinter().visit(stmts[0]) == "{\n\tvar a=5;\n}"

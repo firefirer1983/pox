@@ -15,8 +15,13 @@ class Var(Statement):
         self.name = name
         self.initializer = initilaizer
 
+class Block(Statement):
+    def __init__(self, statements: list[Statement]):
+        self.statements = statements
+
 
 class Stmt:
     PrintStmt = PrintStmt
     ExprStmt = ExprStmt
     Var = Var
+    Block = Block

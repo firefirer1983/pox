@@ -10,6 +10,10 @@ from .statement import Stmt
 logger = logging.getLogger(__name__)
 
 
+def yild_stmt(gen: Generator[Statement, None, None]) -> Statement:
+    return next(iter(gen))
+
+
 class Parser:
     def __init__(self, tokens: list[Token]):
         self.tokens = tokens
@@ -62,17 +66,18 @@ class Parser:
         statements = list()
         while not self.is_end():
             try:
-                for stmt in self.declaration():
-                    statements.append(stmt)
+                stmt = self.declaration()
             except ParseError as exc:
                 logger.info(f"ParseError: {exc}", exc_info=True)
                 self.synchronize()
+            else:
+                statements.append(stmt)
         return statements
 
-    def declaration(self) -> Generator[Statement, None, None]:
+    def declaration(self) -> Statement:
         if self.match(TokenType.VAR):
-            yield self.var_declaration()
-        yield from self.statement()
+            return self.var_declaration()
+        return self.statement()
 
     def var_declaration(self) -> Statement:
         name = self.consume(TokenType.IDENTIFIER, "Expect Variable Name")
@@ -82,18 +87,21 @@ class Parser:
         self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration")
         return Stmt.Var(name, initializer)
 
-    def block(self) -> Generator[Statement, None, None]:
+    def block(self) -> Statement:
+        statements = list()
         while not self.check(TokenType.RIGHT_BRACE) and not self.is_end():
-            yield from self.declaration()
+            stmt = self.declaration()
+            statements.append(stmt)
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block")
+        return Stmt.Block(statements)
 
-    def statement(self) -> Generator[Statement, None, None]:
+    def statement(self) -> Statement:
         if self.match(TokenType.PRINT):
-            yield self.print_stmt()
+            return self.print_stmt()
         elif self.match(TokenType.LEFT_BRACE):
-            yield from self.block()
+            return self.block()
         else:
-            yield self.expr_stmt()
+            return self.expr_stmt()
 
     def expr_stmt(self) -> Stmt.ExprStmt:
         expr = self.expression()

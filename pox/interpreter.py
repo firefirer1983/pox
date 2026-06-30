@@ -1,13 +1,13 @@
+from pox.environment import global_env
 import logging
 import logging
-from pox.base import literal2str
 import sys
 from functools import singledispatchmethod
 from .token import TokenType
 from .environment import Environment
 from .expression import Expr
 from .statement import Stmt
-from .base import Visitor, Expression, LiteralTypes, ParseError
+from .base import Visitor, Expression, LiteralTypes, ParseError, literal2str
 
 class AstPrinter(Visitor):
     @singledispatchmethod
@@ -50,19 +50,27 @@ class AstPrinter(Visitor):
         result += ";"
         return result
 
+    @visit.register
+    def _(self, stmt: Stmt.Block)-> str:
+        result = "{\n"
+        for statement in stmt.statements:
+            result += "\t"
+            result += self.visit(statement)
+            result += "\n"
+        result += "}"
+        return result
 
 class Interpreter(Visitor):
 
     def __init__(self):
-        self.environment = Environment()
         logging.basicConfig(level=logging.INFO)
 
     @singledispatchmethod
-    def visit(self, expr: Expression) -> LiteralTypes:
+    def visit(self, expr: Expression, env: Environment) -> LiteralTypes:
         raise NotImplementedError(type(expr))
 
     @visit.register
-    def _(self, expr: Expr.Binary) -> LiteralTypes:
+    def _(self, expr: Expr.Binary, env: Environment = global_env) -> LiteralTypes:
         left = self.visit(expr.left)
         right = self.visit(expr.right)
         match expr.operator.token_type:
@@ -100,11 +108,11 @@ class Interpreter(Visitor):
                 raise ParseError()
 
     @visit.register
-    def _(self, expr: Expr.Literal) -> LiteralTypes:
+    def _(self, expr: Expr.Literal, env: Environment = global_env) -> LiteralTypes:
         return expr.value
 
     @visit.register
-    def _(self, expr: Expr.Unary) -> LiteralTypes:
+    def _(self, expr: Expr.Unary, env: Environment = global_env) -> LiteralTypes:
         right = self.visit(expr.right)
         if expr.operator.token_type == TokenType.MINUS:
             if not isinstance(right, (float, int)):
@@ -115,33 +123,36 @@ class Interpreter(Visitor):
         raise ParseError()
 
     @visit.register
-    def _(self, expr: Expr.Grouping) -> LiteralTypes:
+    def _(self, expr: Expr.Grouping, env: Environment = global_env) -> LiteralTypes:
         return expr.expr.accept(self)
 
     @visit.register
-    def _(self, expr: Expr.Variable) -> LiteralTypes:
-        return self.environment.get(expr.identify.lexeme)
+    def _(self, expr: Expr.Variable, env: Environment = global_env) -> LiteralTypes:
+        return env.get(expr.identify.lexeme)
 
     @visit.register
-    def _(self, expr: Expr.Assign) -> LiteralTypes:
-        self.environment.assign(expr.identify.lexeme, self.visit(expr.value))
+    def _(self, expr: Expr.Assign, env: Environment = global_env) -> LiteralTypes:
+        env.assign(expr.identify.lexeme, self.visit(expr.value))
 
     @visit.register
-    def _(self, stmt: Stmt.PrintStmt):
+    def _(self, stmt: Stmt.PrintStmt, env: Environment = global_env):
         string = literal2str(self.visit(stmt.expr))
         sys.stdout.write(string)
         sys.stdout.flush()
 
     @visit.register
-    def _(self, stmt: Stmt.ExprStmt):
-        return self.visit(stmt.expr)
+    def _(self, stmt: Stmt.ExprStmt, env: Environment = global_env):
+        return self.visit(stmt.expr, env)
 
     @visit.register
-    def _(self, stmt: Stmt.Var):
+    def _(self, stmt: Stmt.Var, env: Environment = global_env):
         value = None
         if stmt.initializer:
-            value = self.visit(stmt.initializer)
-        self.environment.define(stmt.name.lexeme, value)
+            value = self.visit(stmt.initializer, env)
+        env.define(stmt.name.lexeme, value)
 
-    def get(self, name: str) -> LiteralTypes:
-        return self.environment.get(name)
+    @visit.register
+    def _(self, stmt: Stmt.Block, env: Environment = global_env):
+        env = Environment(env)
+        for statement in stmt.statements:
+            self.visit(statement, env)

@@ -29,3 +29,6 @@ class Environment:
                 return
             env = self.enclosing
         raise RunError(f"Variable assign {name} not found!")
+
+
+global_env = Environment()

@@ -13,21 +13,23 @@ class RunError(RuntimeError):
     pass
 
 
-class Visitor(ABC):
-    @singledispatchmethod
-    @abstractmethod
-    def visit(self, expr: "Expression") -> Any:
-        raise NotImplementedError()
-
 
 class Expression(ABC):
-    def accept(self, visitor: Visitor):
+    def accept(self, visitor: "Visitor"):
         return visitor.visit(self)
 
 
 class Statement(ABC):
-    def accept(self, visitor: Visitor):
+    def accept(self, visitor: "Visitor"):
         return visitor.visit(self)
+
+
+class Visitor(ABC):
+
+    @singledispatchmethod
+    @abstractmethod
+    def visit(self, stmt: Statement | Expression) -> Any:
+        raise NotImplementedError()
 
 
 def literal2str(literal: LiteralTypes) -> str:
