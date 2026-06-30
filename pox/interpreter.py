@@ -117,11 +117,11 @@ class Interpreter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Variable) -> LiteralTypes:
-        return self.environment.get(expr.identify)
+        return self.environment.get(expr.identify.lexeme)
 
     @visit.register
     def _(self, expr: Expr.Assign) -> LiteralTypes:
-        self.environment.assign(expr.identify, self.visit(expr.value))
+        self.environment.assign(expr.identify.lexeme, self.visit(expr.value))
 
     @visit.register
     def _(self, stmt: Stmt.PrintStmt):
@@ -138,4 +138,4 @@ class Interpreter(Visitor):
         value = None
         if stmt.initializer:
             value = self.visit(stmt.initializer)
-        self.environment.assign(stmt.name, value)
+        self.environment.define(stmt.name.lexeme, value)

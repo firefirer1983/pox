@@ -13,20 +13,19 @@ class Environment:
     def define(self, name: str, value: LiteralTypes):
         self.vars[name] = value
 
-    def get(self, name: Token) -> LiteralTypes:
+    def get(self, name: str) -> LiteralTypes:
         env = self
         while env:
-            result = env.vars.get(name.lexeme)
-            if result:
-                return result
+            if name in env.vars:
+                return env.vars[name]
             env = self.enclosing
-        raise RunError(f"Variable get {name.lexeme} not found!")
+        raise RunError(f"Variable get {name} not found!")
 
-    def assign(self, name: Token, value: LiteralTypes):
+    def assign(self, name: str, value: LiteralTypes):
         env = self
         while env:
-            if name.lexeme in env.vars.keys():
-                env.vars[name.lexeme] = value
+            if name in env.vars.keys():
+                env.vars[name] = value
                 return
             env = self.enclosing
-        raise RunError(f"Variable assign {name.lexeme} not found!")
+        raise RunError(f"Variable assign {name} not found!")

@@ -43,9 +43,19 @@ class TestInterpretExpr:
         )
 
 
-
 class TestInterpretStmt:
     def test_var_declaration(self):
-        tokens = Scanner("var a = 5").scan_tokens()
-        for stmt in Parser(tokens).parse():
-            Interpreter().visit(stmt)
+        interpreter = Interpreter()
+        for stmt in Parser(Scanner("var a = 5;").scan_tokens()).parse():
+            interpreter.visit(stmt)
+            assert interpreter.environment.get("a") == 5
+
+    def test_var_declaration_and_assign(self):
+        interpreter = Interpreter()
+        tokens = Scanner("var a;a=5;").scan_tokens()
+
+        stmts = Parser(tokens).parse()
+        interpreter.visit(stmts[0])
+        assert interpreter.environment.get("a") == None
+        interpreter.visit(stmts[1])
+        assert interpreter.environment.get("a") == 5

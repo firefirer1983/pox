@@ -47,6 +47,9 @@ class TestAstPrinter:
         )
 
     def test_parse_var_expr(self):
+        assert AstPrinter().visit(Parser(Scanner("a + 1").scan_tokens()).expression()) == "(+ a 1)"
+
+    def test_parse_assign_expr(self):
         assert AstPrinter().visit(Parser(Scanner("a = 5").scan_tokens()).expression()) == "a = 5"
 
     def test_parse_var_stmt(self):

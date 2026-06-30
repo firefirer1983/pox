@@ -52,7 +52,7 @@ class Parser:
             return True
         return False
 
-    def parse(self):
+    def parse(self)-> list[Statement]:
         statements = list()
         while not self.is_end():
             try:
@@ -61,6 +61,7 @@ class Parser:
                 self.synchronize()
             else:
                 statements.append(stmt)
+        return statements
 
     def declaration(self)-> Statement:
         if self.match(TokenType.VAR):
@@ -107,13 +108,6 @@ class Parser:
                 return Expr.Assign(expr.identify, value)
             raise ParseError("Invalid assignment target")
         return expr
-
-    def parse(self) -> list[Statement]:
-        statements: list[Statement] = list()
-        while not self.is_end():
-            stmt = self.statement()
-            statements.append(stmt)
-        return statements
 
     def expression(self) -> Expression:
         return self.assignment()
