@@ -56,11 +56,14 @@ class Parser:
         statements = list()
         while not self.is_end():
             try:
-                stmt = self.declaration()
+                if self.match(TokenType.LEFT_BRACE):
+                    stmts = self.block()
+                    statements.extend(stmts)
+                else:
+                    stmt = self.declaration()
+                    statements.append(stmt)
             except ParseError:
                 self.synchronize()
-            else:
-                statements.append(stmt)
         return statements
 
     def declaration(self)-> Statement:
@@ -79,7 +82,7 @@ class Parser:
     def block(self)-> list[Statement]:
         statements: list[Statement] = list()
         while (not self.check(TokenType.RIGHT_BRACE) and not self.is_end()):
-            stmt = self.statement()
+            stmt = self.declaration()
             statements.append(stmt)
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block")
         return statements

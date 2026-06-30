@@ -36,7 +36,7 @@ class AstPrinter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Assign)-> str:
-        return f"{expr.identify.lexeme} = {self.visit(expr.value)}"
+        return f"{expr.identify.lexeme}={self.visit(expr.value)}"
 
     @visit.register
     def _(self, stmt: Stmt.Var)-> str:
@@ -44,7 +44,7 @@ class AstPrinter(Visitor):
         result = f"var {stmt.name.lexeme}"
         if stmt.initializer:
             value = self.visit(stmt.initializer)
-            result += f" = {value}"
+            result += f"={value}"
         result += ";"
         return result
 
