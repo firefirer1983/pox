@@ -51,6 +51,13 @@ class TestInterpretStmt:
         interpreter.visit(stmts[0])
         assert interpreter.get("a") == None
 
+    def test_print_statement(self):
+        interpreter = Interpreter()
+        tokens = Scanner("print 'hello';").scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts) == 1
+        interpreter.visit(stmts[0])
+
     def test_var_declaration_with_initializer(self):
         interpreter = Interpreter()
         for stmt in Parser(Scanner("var a = 5;").scan_tokens()).parse():
@@ -79,10 +86,21 @@ class TestInterpretStmt:
     def test_block_multi_statement(self):
         interpreter = Interpreter()
         stmts = Parser(Scanner("var a;{a=5;a=a*3;}").scan_tokens()).parse()
-        assert len(stmts)== 3
+        assert len(stmts) == 3
         interpreter.visit(stmts[0])
         assert interpreter.environment.get("a") == None
         interpreter.visit(stmts[1])
         assert interpreter.environment.get("a") == 5
         interpreter.visit(stmts[2])
         assert interpreter.environment.get("a") == 15
+
+    def test_nested_block(self):
+        interpreter = Interpreter()
+        tokens = Scanner("{var a=5;{a=3;}}").scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts)== 2
+
+        interpreter.visit(stmts[0])
+        assert interpreter.get("a") == 5
+        interpreter.visit(stmts[1])
+        assert interpreter.get("a") == 3

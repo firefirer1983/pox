@@ -65,6 +65,7 @@ class Token:
     def __str__(self) -> str:
         return repr(self)
 
+
 key_words: dict[str, TokenType] = {
     "or": TokenType.OR,
     "and": TokenType.AND,
@@ -81,5 +82,5 @@ key_words: dict[str, TokenType] = {
     "false": TokenType.FALSE,
     "while": TokenType.WHILE,
     "var": TokenType.VAR,
-    "print": TokenType.PRINT
+    "print": TokenType.PRINT,
 }

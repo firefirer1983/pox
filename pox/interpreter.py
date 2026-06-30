@@ -1,3 +1,5 @@
+import logging
+import logging
 from pox.base import literal2str
 import sys
 from functools import singledispatchmethod
@@ -53,6 +55,7 @@ class Interpreter(Visitor):
 
     def __init__(self):
         self.environment = Environment()
+        logging.basicConfig(level=logging.INFO)
 
     @singledispatchmethod
     def visit(self, expr: Expression) -> LiteralTypes:

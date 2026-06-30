@@ -1,7 +1,13 @@
+from typing import Generator
+import logging
+
 from .token import Token, TokenType
 from .base import ParseError, Expression, Statement
 from .expression import Expr
 from .statement import Stmt
+
+
+logger = logging.getLogger(__name__)
 
 
 class Parser:
@@ -33,7 +39,7 @@ class Parser:
             self.current += 1
         return self.previous()
 
-    def consume(self, expect_type: TokenType, err: str)-> Token:
+    def consume(self, expect_type: TokenType, err: str) -> Token:
         if self.check(expect_type):
             return self.advance()
         raise ParseError(err)
@@ -52,45 +58,42 @@ class Parser:
             return True
         return False
 
-    def parse(self)-> list[Statement]:
+    def parse(self) -> list[Statement]:
         statements = list()
         while not self.is_end():
             try:
-                if self.match(TokenType.LEFT_BRACE):
-                    stmts = self.block()
-                    statements.extend(stmts)
-                else:
-                    stmt = self.declaration()
+                for stmt in self.declaration():
                     statements.append(stmt)
-            except ParseError:
+            except ParseError as exc:
+                logger.info(f"ParseError: {exc}", exc_info=True)
                 self.synchronize()
         return statements
 
-    def declaration(self)-> Statement:
+    def declaration(self) -> Generator[Statement, None, None]:
         if self.match(TokenType.VAR):
-            return self.var_declaration()
-        return self.statement()
+            yield self.var_declaration()
+        yield from self.statement()
 
-    def var_declaration(self)-> Statement:
+    def var_declaration(self) -> Statement:
         name = self.consume(TokenType.IDENTIFIER, "Expect Variable Name")
         initializer = None
-        if (self.match(TokenType.EQUAL)):
+        if self.match(TokenType.EQUAL):
             initializer = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration")
         return Stmt.Var(name, initializer)
 
-    def block(self)-> list[Statement]:
-        statements: list[Statement] = list()
-        while (not self.check(TokenType.RIGHT_BRACE) and not self.is_end()):
-            stmt = self.declaration()
-            statements.append(stmt)
+    def block(self) -> Generator[Statement, None, None]:
+        while not self.check(TokenType.RIGHT_BRACE) and not self.is_end():
+            yield from self.declaration()
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block")
-        return statements
 
-    def statement(self) -> Statement:
+    def statement(self) -> Generator[Statement, None, None]:
         if self.match(TokenType.PRINT):
-            return self.print_stmt()
-        return self.expr_stmt()
+            yield self.print_stmt()
+        elif self.match(TokenType.LEFT_BRACE):
+            yield from self.block()
+        else:
+            yield self.expr_stmt()
 
     def expr_stmt(self) -> Stmt.ExprStmt:
         expr = self.expression()
@@ -102,7 +105,7 @@ class Parser:
         self.consume(TokenType.SEMICOLON, "Expect ';' after expression")
         return Stmt.PrintStmt(expr)
 
-    def assignment(self)-> Expression:
+    def assignment(self) -> Expression:
         expr = self.equality()
         if self.match(TokenType.EQUAL):
             eq = self.previous()

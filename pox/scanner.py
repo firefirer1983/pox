@@ -38,7 +38,7 @@ class Scanner:
 
     def add_string_literal(self) -> Optional[Token]:
         while True:
-            if self.peek() == '"':
+            if self.peek() in ('"', "'"):
                 self.advance()
                 break
 
@@ -65,9 +65,10 @@ class Scanner:
             self.advance()
             continue
         lexeme = self.source[self.start : self.current]
-        literal = int(lexeme)
         if "." in lexeme:
             literal = float(lexeme)
+        else:
+            literal = int(lexeme)
         token = Token(lexeme, TokenType.NUMBER, literal, self.line)
         self.tokens.append(token)
 
@@ -138,7 +139,7 @@ class Scanner:
                 pass
             elif c == "\n":
                 self.line += 1
-            elif c == '"':
+            elif c in ("'", '"'):
                 self.add_string_literal()
             elif is_digit(c):
                 self.add_digit_literal()

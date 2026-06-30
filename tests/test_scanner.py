@@ -63,12 +63,12 @@ class TestScanSingleToken:
 
     def test_scan_number_tokens(self):
         assert Scanner("123").scan_tokens()[0].token_type == TokenType.NUMBER
-        assert Scanner("123").scan_tokens()[0].lexeme == "123"
-        assert Scanner("123.456").scan_tokens()[0].lexeme == "123.456"
-        assert Scanner("123 ").scan_tokens()[0].lexeme == "123"
-        assert Scanner("123 + 456 ").scan_tokens()[0].lexeme == "123"
+        assert Scanner("123").scan_tokens()[0].literal == 123
+        assert Scanner("123.456").scan_tokens()[0].literal == 123.456
+        assert Scanner("123 ").scan_tokens()[0].literal == 123
+        assert Scanner("123 + 456 ").scan_tokens()[0].literal == 123
         assert Scanner("123 + 456 ").scan_tokens()[1].token_type == TokenType.PLUS
-        assert Scanner("123 + 456 ").scan_tokens()[2].lexeme == "456"
+        assert Scanner("123 + 456 ").scan_tokens()[2].literal == 456
 
     def test_scan_identifier_tokens(self):
         assert Scanner("abc").scan_tokens()[0].token_type == TokenType.IDENTIFIER
@@ -98,7 +98,6 @@ class TestScanSingleToken:
         assert Scanner("var").scan_tokens()[0].token_type == TokenType.VAR
         assert Scanner("while").scan_tokens()[0].token_type == TokenType.WHILE
 
-
     def test_scan_mix_var_tokens(self):
         tokens = Scanner("var a = 3").scan_tokens()
         assert len(tokens) == 4
@@ -106,3 +105,9 @@ class TestScanSingleToken:
         assert tokens[1].token_type == TokenType.IDENTIFIER
         assert tokens[2].token_type == TokenType.EQUAL
         assert tokens[3].token_type == TokenType.NUMBER
+
+    def test_print_tokens(self):
+        tokens = Scanner("print 'hello world!'").scan_tokens()
+        assert len(tokens) == 2
+        assert tokens[0].token_type == TokenType.PRINT
+        assert tokens[1].token_type == TokenType.STRING
