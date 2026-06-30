@@ -97,3 +97,12 @@ class TestScanSingleToken:
         assert Scanner("true").scan_tokens()[0].token_type == TokenType.TRUE
         assert Scanner("var").scan_tokens()[0].token_type == TokenType.VAR
         assert Scanner("while").scan_tokens()[0].token_type == TokenType.WHILE
+
+
+    def test_scan_mix_var_tokens(self):
+        tokens = Scanner("var a = 3").scan_tokens()
+        assert len(tokens) == 4
+        assert tokens[0].token_type == TokenType.VAR
+        assert tokens[1].token_type == TokenType.IDENTIFIER
+        assert tokens[2].token_type == TokenType.EQUAL
+        assert tokens[3].token_type == TokenType.NUMBER

@@ -1,3 +1,4 @@
+from pox.base import LiteralTypes
 from .token import Token
 from .base import RunError
 from typing import Any
@@ -5,14 +6,14 @@ from typing import Optional
 
 
 class Environment:
-    def __init__(self, enclosing: Optional[Environment] = None):
+    def __init__(self, enclosing: Optional["Environment"] = None):
         self.enclosing = enclosing
         self.vars: dict[str, Any] = dict()
 
-    def define(self, name: str, value: Any):
+    def define(self, name: str, value: LiteralTypes):
         self.vars[name] = value
 
-    def get(self, name: Token):
+    def get(self, name: Token) -> LiteralTypes:
         env = self
         while env:
             result = env.vars.get(name.lexeme)
@@ -21,7 +22,7 @@ class Environment:
             env = self.enclosing
         raise RunError(f"Variable get {name.lexeme} not found!")
 
-    def assign(self, name: Token, value: Any):
+    def assign(self, name: Token, value: LiteralTypes):
         env = self
         while env:
             if name.lexeme in env.vars.keys():

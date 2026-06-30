@@ -67,7 +67,6 @@ class Parser:
             return self.var_declaration()
         return self.statement()
 
-
     def var_declaration(self)-> Statement:
         name = self.consume(TokenType.IDENTIFIER, "Expect Variable Name")
         initializer = None
