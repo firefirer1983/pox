@@ -5,91 +5,6 @@ from .expression import Expr
 from .statement import Stmt
 
 
-class AstPrinter(Visitor):
-    @singledispatchmethod
-    def visit(self, expr: Expression) -> str:
-        raise NotImplementedError(type(expr))
-
-    @visit.register
-    def _(self, expr: Expr.Binary) -> str:
-        return (
-            f"({expr.operator.lexeme} {self.visit(expr.left)} {self.visit(expr.right)})"
-        )
-
-    @visit.register
-    def _(self, expr: Expr.Literal) -> str:
-        return f"{expr.value}"
-
-    @visit.register
-    def _(self, expr: Expr.Unary) -> str:
-        return f"{expr.operator.lexeme}{self.visit(expr.right)}"
-
-    @visit.register
-    def _(self, expr: Expr.Grouping) -> str:
-        return f"({self.visit(expr.expr)})"
-
-
-class Interpreter(Visitor):
-    @singledispatchmethod
-    def visit(self, expr: Expression) -> LiteralTypes:
-        raise NotImplementedError(type(expr))
-
-    @visit.register
-    def _(self, expr: Expr.Binary) -> LiteralTypes:
-        left = self.visit(expr.left)
-        right = self.visit(expr.right)
-        match expr.operator.token_type:
-            case TokenType.GREATER:
-                # pyrefly:ignore[unsupported-operation]
-                return left > right
-            case TokenType.GREATER_EQUAL:
-                # pyrefly:ignore[unsupported-operation]
-                return left >= right
-            case TokenType.LESS:
-                # pyrefly:ignore[unsupported-operation]
-                return left < right
-            case TokenType.LESS_EQUAL:
-                # pyrefly:ignore[unsupported-operation]
-                return left <= right
-            case TokenType.PLUS:
-                # pyrefly:ignore[unsupported-operation]
-                return left + right
-            case TokenType.MINUS:
-                # pyrefly:ignore[unsupported-operation]
-                return left - right
-            case TokenType.STAR:
-                # pyrefly:ignore[unsupported-operation]
-                return left * right
-            case TokenType.SLASH:
-                # pyrefly:ignore[unsupported-operation]
-                return left / right
-            case TokenType.BANG_EQUAL:
-                # pyrefly:ignore[unsupported-operation]
-                return left != right
-            case TokenType.EQUAL_EQUAL:
-                # pyrefly:ignore[unsupported-operation]
-                return left == right
-            case _:
-                raise ParseError()
-
-    @visit.register
-    def _(self, expr: Expr.Literal) -> LiteralTypes:
-        return expr.value
-
-    @visit.register
-    def _(self, expr: Expr.Unary) -> LiteralTypes:
-        right = self.visit(expr.right)
-        if expr.operator.token_type == TokenType.MINUS:
-            if not isinstance(right, (float, int)):
-                raise ParseError()
-            return -1 * right
-        elif expr.operator.token_type == TokenType.BANG:
-            return bool(right)
-        raise ParseError()
-
-    @visit.register
-    def _(self, expr: Expr.Grouping) -> LiteralTypes:
-        return self.visit(expr.expr)
 
 
 class Parser:
@@ -160,6 +75,13 @@ class Parser:
     def expression(self) -> Expression:
         return self.equality()
 
+    def equality(self) -> Expression:
+        expr = self.comparision()
+        while self.match_any(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL):
+            right = self.comparision()
+            expr = Expr.Binary(expr, self.previous(), right)
+        return expr
+
     def comparision(self) -> Expression:
         expr = self.term()
         while self.match_any(
@@ -197,29 +119,25 @@ class Parser:
     def primary(self) -> Expression:
         if self.match_any(TokenType.TRUE):
             return Expr.Literal(True)
+
         if self.match_any(TokenType.FALSE):
             return Expr.Literal(False)
+
         if self.match_any(TokenType.NIL):
             return Expr.Literal(None)
+
         if self.match_any(TokenType.NUMBER, TokenType.STRING):
             return Expr.Literal(self.previous().literal)
-
-        if self.match_any(TokenType.IDENTIFIER):
-            return Expr.Variable(self.previous())
 
         if self.match_any(TokenType.LEFT_PAREN):
             expr = self.expression()
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expressoin")
             return Expr.Grouping(expr)
 
-        raise ParseError()
+        if self.match_any(TokenType.IDENTIFIER):
+            return Expr.Variable(self.previous())
 
-    def equality(self) -> Expression:
-        expr = self.comparision()
-        while self.match_any(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL):
-            right = self.comparision()
-            expr = Expr.Binary(expr, self.previous(), right)
-        return expr
+        raise ParseError()
 
     def number(self):
         return self.peek()
