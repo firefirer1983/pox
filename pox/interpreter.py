@@ -7,7 +7,8 @@ from .token import TokenType
 from .environment import Environment
 from .expression import Expr
 from .statement import Stmt
-from .base import Visitor, Expression, LiteralTypes, ParseError, literal2str
+from .base import Visitor, Expression, LiteralTypes, ParseError, literal2str, is_true
+
 
 class AstPrinter(Visitor):
     @singledispatchmethod
@@ -33,15 +34,15 @@ class AstPrinter(Visitor):
         return f"({self.visit(expr.expr)})"
 
     @visit.register
-    def _(self, expr: Expr.Variable)-> str:
+    def _(self, expr: Expr.Variable) -> str:
         return f"{expr.identify.lexeme}"
 
     @visit.register
-    def _(self, expr: Expr.Assign)-> str:
+    def _(self, expr: Expr.Assign) -> str:
         return f"{expr.identify.lexeme}={self.visit(expr.value)}"
 
     @visit.register
-    def _(self, stmt: Stmt.Var)-> str:
+    def _(self, stmt: Stmt.Var) -> str:
         value = ""
         result = f"var {stmt.name.lexeme}"
         if stmt.initializer:
@@ -51,7 +52,7 @@ class AstPrinter(Visitor):
         return result
 
     @visit.register
-    def _(self, stmt: Stmt.Block)-> str:
+    def _(self, stmt: Stmt.Block) -> str:
         result = "{\n"
         for statement in stmt.statements:
             result += "\t"
@@ -60,8 +61,28 @@ class AstPrinter(Visitor):
         result += "}"
         return result
 
-class Interpreter(Visitor):
+    @visit.register
+    def _(self, stmt: Stmt.ExprStmt) -> str:
+        return f"{self.visit(stmt.expr)};"
 
+    @visit.register
+    def _(self, stmt: Stmt.IF) -> str:
+        result = f"if ({self.visit(stmt.condition)})"
+        result += "\n"
+        result += self.visit(stmt.consequent)
+        if stmt.alternative:
+            result += "\n"
+            result += self.visit(stmt.alternative)
+        return result
+
+    @visit.register
+    def _(self, expr: Expr.Logical) -> str:
+        return (
+            f"({expr.operator.lexeme} {self.visit(expr.left)} {self.visit(expr.right)})"
+        )
+
+
+class Interpreter(Visitor):
     def __init__(self):
         logging.basicConfig(level=logging.INFO)
 
@@ -156,3 +177,10 @@ class Interpreter(Visitor):
         env = Environment(env)
         for statement in stmt.statements:
             self.visit(statement, env)
+
+    @visit.register
+    def _(self, stmt: Stmt.IF):
+        if is_true(self.visit(stmt.condition)):
+            self.visit(stmt.consequent)
+        elif stmt.alternative:
+            self.visit(stmt.alternative)

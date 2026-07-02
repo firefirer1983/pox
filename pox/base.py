@@ -13,7 +13,6 @@ class RunError(RuntimeError):
     pass
 
 
-
 class Expression(ABC):
     def accept(self, visitor: "Visitor"):
         return visitor.visit(self)
@@ -25,7 +24,6 @@ class Statement(ABC):
 
 
 class Visitor(ABC):
-
     @singledispatchmethod
     @abstractmethod
     def visit(self, stmt: Statement | Expression) -> Any:
@@ -36,3 +34,7 @@ def literal2str(literal: LiteralTypes) -> str:
     if isinstance(literal, str):
         return literal
     return f"{literal}"
+
+
+def is_true(literal: LiteralTypes) -> bool:
+    return bool(literal)

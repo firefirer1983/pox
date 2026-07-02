@@ -19,9 +19,16 @@ class Block(Statement):
     def __init__(self, statements: list[Statement]):
         self.statements = statements
 
+class IF(Statement):
+    def __init__(self, condition: Expression, consequent: Statement, alternative: Optional[Statement] = None):
+        self.condition = condition
+        self.consequent = consequent
+        self.alternative = alternative
+
 
 class Stmt:
     PrintStmt = PrintStmt
     ExprStmt = ExprStmt
     Var = Var
     Block = Block
+    IF = IF

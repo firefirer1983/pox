@@ -47,13 +47,24 @@ class TestAstPrinter:
         )
 
     def test_parse_var_expr(self):
-        assert AstPrinter().visit(Parser(Scanner("a + 1").scan_tokens()).expression()) == "(+ a 1)"
+        assert (
+            AstPrinter().visit(Parser(Scanner("a + 1").scan_tokens()).expression())
+            == "(+ a 1)"
+        )
 
     def test_parse_assign_expr(self):
-        assert AstPrinter().visit(Parser(Scanner("a = 5").scan_tokens()).expression()) == "a=5"
+        assert (
+            AstPrinter().visit(Parser(Scanner("a = 5").scan_tokens()).expression())
+            == "a=5"
+        )
 
     def test_parse_var_stmt(self):
-        assert AstPrinter().visit(Parser(Scanner("var a = 5;").scan_tokens()).declaration()) == "var a=5;"
+        assert (
+            AstPrinter().visit(
+                Parser(Scanner("var a = 5;").scan_tokens()).declaration()
+            )
+            == "var a=5;"
+        )
 
     def test_parse_block_stmt(self):
         tokens = Scanner("{var a = 5;}").scan_tokens()
@@ -61,3 +72,21 @@ class TestAstPrinter:
         stmts = Parser(tokens).parse()
         assert len(stmts) == 1
         assert AstPrinter().visit(stmts[0]) == "{\n\tvar a=5;\n}"
+
+    def test_parse_if_stmt(self):
+        tokens = Scanner("if (a>5) {a=3;}").scan_tokens()
+        stmt = Parser(tokens).declaration()
+        assert AstPrinter().visit(stmt) == "if ((> a 5))\n{\n\ta=3;\n}"
+
+    def test_parse_logical_expr(self):
+        tokens = Scanner("true or false").scan_tokens()
+        assert AstPrinter().visit(Parser(tokens).expression()) == "(or True False)"
+
+        tokens = Scanner("a = false or true").scan_tokens()
+        assert AstPrinter().visit(Parser(tokens).expression()) == "a=(or False True)"
+
+        tokens = Scanner("a = true and (true or a)").scan_tokens()
+        assert (
+            AstPrinter().visit(Parser(tokens).expression())
+            == "a=(and True (or True a))"
+        )

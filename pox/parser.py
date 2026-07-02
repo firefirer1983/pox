@@ -95,8 +95,20 @@ class Parser:
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block")
         return Stmt.Block(statements)
 
+    def if_stmt(self) -> Stmt.IF:
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after if")
+        condition = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after if")
+        consequent = self.statement()
+        alternative = None
+        if self.match(TokenType.ELSE):
+            alternative = self.statement()
+        return Stmt.IF(condition, consequent, alternative)
+
     def statement(self) -> Statement:
-        if self.match(TokenType.PRINT):
+        if self.match(TokenType.IF):
+            return self.if_stmt()
+        elif self.match(TokenType.PRINT):
             return self.print_stmt()
         elif self.match(TokenType.LEFT_BRACE):
             return self.block()
@@ -113,18 +125,35 @@ class Parser:
         self.consume(TokenType.SEMICOLON, "Expect ';' after expression")
         return Stmt.PrintStmt(expr)
 
+
+    def expression(self) -> Expression:
+        return self.assignment()
+
     def assignment(self) -> Expression:
-        expr = self.equality()
+        expr = self.or_expr()
         if self.match(TokenType.EQUAL):
             eq = self.previous()
-            value = self.equality()
+            value = self.or_expr()
             if isinstance(expr, Expr.Variable):
                 return Expr.Assign(expr.identify, value)
             raise ParseError("Invalid assignment target")
         return expr
 
-    def expression(self) -> Expression:
-        return self.assignment()
+    def or_expr(self)-> Expression:
+        left = self.and_expr()
+        if self.match(TokenType.OR):
+            token = self.previous()
+            right = self.and_expr()
+            return Expr.Logical(left, token, right)
+        return left
+
+    def and_expr(self) -> Expression:
+        left = self.equality()
+        if self.match(TokenType.AND):
+            token = self.previous()
+            right = self.equality()
+            return Expr.Logical(left, token, right)
+        return left
 
     def equality(self) -> Expression:
         expr = self.comparision()

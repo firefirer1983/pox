@@ -45,6 +45,13 @@ class Assign(Expression):
         self.value = value
 
 
+class Logical(Expression):
+    def __init__(self, left: Expression, operator: Token, right: Expression):
+        self.left = left
+        self.operator = operator
+        self.right = right
+
+
 class Expr:
     Binary = Binary
     Unary = Unary
@@ -52,3 +59,4 @@ class Expr:
     Grouping = Grouping
     Variable = Variable
     Assign = Assign
+    Logical = Logical
