@@ -143,7 +143,6 @@ class Parser:
             initializer = None
         elif self.match(TokenType.VAR):
             initializer = self.var_declaration()
-            self.consume(TokenType.SEMICOLON, "Exprect ';' after initialier")
         else:
             initializer = Stmt.ExprStmt(self.expression())
             self.consume(TokenType.SEMICOLON, "Exprect ';' after initialier")
@@ -164,7 +163,7 @@ class Parser:
             body.statements = body.statements + [Stmt.ExprStmt(increment)]
 
         if initializer:
-            return Stmt.Block([Stmt.While(cond, body)])
+            return Stmt.Block([initializer, Stmt.While(cond, body)])
         return Stmt.While(cond, body)
 
     @log_trace
@@ -304,7 +303,7 @@ class Parser:
             logger.info("@Var")
             return Expr.Variable(self.previous())
 
-        raise ParseError()
+        raise ParseError(f"Error Token: {self.peek().lexeme}")
 
     @log_trace
     def number(self):

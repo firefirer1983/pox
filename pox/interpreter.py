@@ -60,9 +60,10 @@ class AstPrinter(Visitor):
 
     @visit.register
     def _(self, stmt: Stmt.Block) -> str:
-        result = ""
+        result = "{"
         for statement in stmt.statements:
             result += self.visit(statement)
+        result += "}"
         return result
 
     @visit.register
@@ -85,7 +86,7 @@ class AstPrinter(Visitor):
 
     @visit.register
     def _(self, stmt: Stmt.While) -> str:
-        return f"while({self.visit(stmt.condition)})" + "{" + f"{self.visit(stmt.statement)}" + "}"
+        return f"while({self.visit(stmt.condition)}){self.visit(stmt.statement)}"
 
 
 class Interpreter(Visitor):
