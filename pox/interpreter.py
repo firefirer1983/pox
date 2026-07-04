@@ -26,9 +26,7 @@ class AstPrinter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Binary) -> str:
-        return (
-            f"({expr.operator.lexeme} {self.visit(expr.left)} {self.visit(expr.right)})"
-        )
+        return f"({self.visit(expr.left)}{expr.operator.lexeme}{self.visit(expr.right)})"
 
     @visit.register
     def _(self, expr: Expr.Literal) -> str:
@@ -82,17 +80,12 @@ class AstPrinter(Visitor):
     @visit.register
     def _(self, expr: Expr.Logical) -> str:
         return (
-            f"({expr.operator.lexeme} {self.visit(expr.left)} {self.visit(expr.right)})"
+            f"({self.visit(expr.left)} {expr.operator.lexeme} {self.visit(expr.right)})"
         )
 
     @visit.register
     def _(self, stmt: Stmt.While) -> str:
-        return (
-            f"while({self.visit(stmt.condition)})"
-            + "{"
-            + f"{self.visit(stmt.body)}"
-            + "}"
-        )
+        return f"while({self.visit(stmt.condition)})" + "{" + f"{self.visit(stmt.statement)}" + "}"
 
 
 class Interpreter(Visitor):

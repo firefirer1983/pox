@@ -22,35 +22,35 @@ class TestAstPrinter:
     def test_parse_binary_expr(self):
         assert (
             AstPrinter().visit(Parser(Scanner("5+1").scan_tokens()).expression())
-            == "(+ 5 1)"
+            == "(5+1)"
         )
         assert (
             AstPrinter().visit(Parser(Scanner("5-1").scan_tokens()).expression())
-            == "(- 5 1)"
+            == "(5-1)"
         )
         assert (
             AstPrinter().visit(Parser(Scanner("5*1").scan_tokens()).expression())
-            == "(* 5 1)"
+            == "(5*1)"
         )
         assert (
             AstPrinter().visit(Parser(Scanner("5/1").scan_tokens()).expression())
-            == "(/ 5 1)"
+            == "(5/1)"
         )
 
     def test_parse_mix_expr(self):
         assert (
             AstPrinter().visit(Parser(Scanner("5+1*6").scan_tokens()).expression())
-            == "(+ 5 (* 1 6))"
+            == "(5+(1*6))"
         )
         assert (
             AstPrinter().visit(Parser(Scanner("-2+5/4+1*6").scan_tokens()).expression())
-            == "(+ (+ -2 (/ 5 4)) (* 1 6))"
+            == "((-2+(5/4))+(1*6))"
         )
 
     def test_parse_var_expr(self):
         assert (
             AstPrinter().visit(Parser(Scanner("a + 1").scan_tokens()).expression())
-            == "(+ a 1)"
+            == "(a+1)"
         )
 
     def test_parse_assign_expr(self):
@@ -77,22 +77,27 @@ class TestAstPrinter:
     def test_parse_if_stmt(self):
         tokens = Scanner("if (a>5) {a=3;}").scan_tokens()
         stmt = Parser(tokens).declaration()
-        assert AstPrinter().visit(stmt) == "if ((> a 5))a=3;"
+        assert AstPrinter().visit(stmt) == "if ((a>5))a=3;"
 
     def test_parse_logical_expr(self):
         tokens = Scanner("true or false").scan_tokens()
-        assert AstPrinter().visit(Parser(tokens).expression()) == "(or True False)"
+        assert AstPrinter().visit(Parser(tokens).expression()) == "(True or False)"
 
         tokens = Scanner("a = false or true").scan_tokens()
-        assert AstPrinter().visit(Parser(tokens).expression()) == "a=(or False True)"
+        assert AstPrinter().visit(Parser(tokens).expression()) == "a=(False or True)"
 
         tokens = Scanner("a = true and true or a").scan_tokens()
         assert (
             AstPrinter().visit(Parser(tokens).expression())
-            == "a=(and True (or True a))"
+            == "a=(True and (True or a))"
         )
 
     def test_parse_while_statement(self):
         tokens = Scanner("while(true){var a=5;}").scan_tokens()
         statment = Parser(tokens).statement()
         assert AstPrinter().visit(statment) == "while(True){var a=5;}"
+
+    def test_parse_for_statement(self):
+        tokens = Scanner("for(;a<10;){a=6;}").scan_tokens()
+        statment = Parser(tokens).statement()
+        assert AstPrinter().visit(statment) == "while((a<10)){a=6;}"

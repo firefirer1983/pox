@@ -26,9 +26,9 @@ class IF(Statement):
         self.alternative = alternative
 
 class While(Statement):
-    def __init__(self, condition: Expression, body: Block):
+    def __init__(self, condition: Expression, statement: Statement):
         self.condition = condition
-        self.body = body
+        self.statement = statement
 
 class Stmt:
     PrintStmt = PrintStmt

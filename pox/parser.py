@@ -1,6 +1,8 @@
 from typing import Callable
+from functools import wraps
 from typing import Generator
 import logging
+from typing import Callable, TypeVar, ParamSpec
 
 from .token import Token, TokenType
 from .base import ParseError, Expression, Statement
@@ -14,9 +16,12 @@ logger = logging.getLogger(__name__)
 def yild_stmt(gen: Generator[Statement, None, None]) -> Statement:
     return next(iter(gen))
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def log_trace(f: Callable):
-    def _wrapper(*args, **kwargs):
+def log_trace(f: Callable[P, R]) -> Callable[P, R]:
+    @wraps(f)
+    def _wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         logger.info(f"% {f.__name__}")
         return f(*args, **kwargs)
 
@@ -104,7 +109,7 @@ class Parser:
         return Stmt.Var(name, initializer)
 
     @log_trace
-    def block(self) -> Statement:
+    def block(self) -> Stmt.Block:
         statements = list()
         while not self.check(TokenType.RIGHT_BRACE) and not self.is_end():
             stmt = self.declaration()
@@ -132,18 +137,20 @@ class Parser:
         return Stmt.While(condition, body)
 
     @log_trace
-    def for_stmt(self) -> Stmt.While:
+    def for_stmt(self) -> Stmt.While | Stmt.Block:
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after for")
         if self.match(TokenType.SEMICOLON):
             initializer = None
         elif self.match(TokenType.VAR):
             initializer = self.var_declaration()
+            self.consume(TokenType.SEMICOLON, "Exprect ';' after initialier")
         else:
-            initializer = self.expression()
+            initializer = Stmt.ExprStmt(self.expression())
+            self.consume(TokenType.SEMICOLON, "Exprect ';' after initialier")
 
-        condition = Expr.Literal(True)
+        cond = Expr.Literal(True)
         if not self.check(TokenType.SEMICOLON):
-            condition = self.expression()
+            cond = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after for")
 
         increment = None
@@ -151,15 +158,14 @@ class Parser:
             increment = self.expression()
 
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after for")
+        self.consume(TokenType.LEFT_BRACE, "Expect '{' after for")
         body = self.block()
+        if increment:
+            body.statements = body.statements + [Stmt.ExprStmt(increment)]
 
         if initializer:
-            body = Stmt.Block([initializer] + body)
-
-        if increment:
-            body = Stmt.Block(body + [increment])
-
-        return Stmt.While(condition, body)
+            return Stmt.Block([Stmt.While(cond, body)])
+        return Stmt.While(cond, body)
 
     @log_trace
     def statement(self) -> Statement:
