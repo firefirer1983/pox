@@ -157,3 +157,10 @@ class TestInterpretStmt:
         tokens = Scanner("true and true and false").scan_tokens()
         expr = Parser(tokens).expression()
         assert interpreter.visit(expr) == False
+
+    def test_print_and_logical_expr(self):
+        interpreter = Interpreter()
+        tokens = Scanner("print false or 'hello world';").scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts) == 1
+        interpreter.visit(stmts[0])

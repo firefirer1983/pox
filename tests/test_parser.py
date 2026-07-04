@@ -72,12 +72,12 @@ class TestAstPrinter:
 
         stmts = Parser(tokens).parse()
         assert len(stmts) == 1
-        assert AstPrinter().visit(stmts[0]) == "{\n\tvar a=5;\n}"
+        assert AstPrinter().visit(stmts[0]) == "var a=5;"
 
     def test_parse_if_stmt(self):
         tokens = Scanner("if (a>5) {a=3;}").scan_tokens()
         stmt = Parser(tokens).declaration()
-        assert AstPrinter().visit(stmt) == "if ((> a 5))\n{\n\ta=3;\n}"
+        assert AstPrinter().visit(stmt) == "if ((> a 5))a=3;"
 
     def test_parse_logical_expr(self):
         tokens = Scanner("true or false").scan_tokens()
@@ -91,3 +91,8 @@ class TestAstPrinter:
             AstPrinter().visit(Parser(tokens).expression())
             == "a=(and True (or True a))"
         )
+
+    def test_parse_while_statement(self):
+        tokens = Scanner("while(true){var a=5;}").scan_tokens()
+        statment = Parser(tokens).statement()
+        assert AstPrinter().visit(statment) == "while(True){var a=5;}"

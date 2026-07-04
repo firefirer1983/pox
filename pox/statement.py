@@ -25,6 +25,10 @@ class IF(Statement):
         self.consequent = consequent
         self.alternative = alternative
 
+class While(Statement):
+    def __init__(self, condition: Expression, body: Block):
+        self.condition = condition
+        self.body = body
 
 class Stmt:
     PrintStmt = PrintStmt
@@ -32,3 +36,4 @@ class Stmt:
     Var = Var
     Block = Block
     IF = IF
+    While = While

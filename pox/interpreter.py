@@ -8,7 +8,15 @@ from .token import TokenType
 from .environment import Environment
 from .expression import Expr
 from .statement import Stmt
-from .base import Visitor, Expression, LiteralTypes, ParseError, literal2str, is_true, RunError
+from .base import (
+    Visitor,
+    Expression,
+    LiteralTypes,
+    ParseError,
+    literal2str,
+    is_true,
+    RunError,
+)
 
 
 class AstPrinter(Visitor):
@@ -54,12 +62,9 @@ class AstPrinter(Visitor):
 
     @visit.register
     def _(self, stmt: Stmt.Block) -> str:
-        result = "{\n"
+        result = ""
         for statement in stmt.statements:
-            result += "\t"
             result += self.visit(statement)
-            result += "\n"
-        result += "}"
         return result
 
     @visit.register
@@ -69,10 +74,8 @@ class AstPrinter(Visitor):
     @visit.register
     def _(self, stmt: Stmt.IF) -> str:
         result = f"if ({self.visit(stmt.condition)})"
-        result += "\n"
         result += self.visit(stmt.consequent)
         if stmt.alternative:
-            result += "\n"
             result += self.visit(stmt.alternative)
         return result
 
@@ -80,6 +83,15 @@ class AstPrinter(Visitor):
     def _(self, expr: Expr.Logical) -> str:
         return (
             f"({expr.operator.lexeme} {self.visit(expr.left)} {self.visit(expr.right)})"
+        )
+
+    @visit.register
+    def _(self, stmt: Stmt.While) -> str:
+        return (
+            f"while({self.visit(stmt.condition)})"
+            + "{"
+            + f"{self.visit(stmt.body)}"
+            + "}"
         )
 
 
@@ -187,14 +199,19 @@ class Interpreter(Visitor):
             self.visit(stmt.alternative, env)
 
     @visit.register
-    def _(self, expr: Expr.Logical, env: Environment = global_env)-> bool:
+    def _(self, expr: Expr.Logical, env: Environment = global_env):
         if expr.operator.token_type == TokenType.OR:
             if is_true(self.visit(expr.left, env)):
-                return True
-            return bool(self.visit(expr.right, env))
+                return self.visit(expr.left, env)
+            return self.visit(expr.right, env)
         elif expr.operator.token_type == TokenType.AND:
             if is_true(self.visit(expr.left, env)):
-                return bool(self.visit(expr.right, env))
-            return False
+                return self.visit(expr.right, env)
+            return self.visit(expr.left, env)
         else:
             raise RunError(f"Invalid Operator: {expr.operator.lexeme}")
+
+    @visit.register
+    def _(self, stmt: Stmt.While, env: Environment = global_env):
+        while is_true(self.visit(stmt.condition, env)):
+            self.visit(stmt.body, env)

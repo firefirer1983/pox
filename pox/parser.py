@@ -124,11 +124,53 @@ class Parser:
         return Stmt.IF(condition, consequent, alternative)
 
     @log_trace
+    def while_stmt(self)-> Stmt.While:
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after while")
+        condition = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after if")
+        body = self.statement()
+        return Stmt.While(condition, body)
+
+    @log_trace
+    def for_stmt(self) -> Stmt.While:
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after for")
+        if self.match(TokenType.SEMICOLON):
+            initializer = None
+        elif self.match(TokenType.VAR):
+            initializer = self.var_declaration()
+        else:
+            initializer = self.expression()
+
+        condition = Expr.Literal(True)
+        if not self.check(TokenType.SEMICOLON):
+            condition = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after for")
+
+        increment = None
+        if not self.check(TokenType.RIGHT_PAREN):
+            increment = self.expression()
+
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after for")
+        body = self.block()
+
+        if initializer:
+            body = Stmt.Block([initializer] + body)
+
+        if increment:
+            body = Stmt.Block(body + [increment])
+
+        return Stmt.While(condition, body)
+
+    @log_trace
     def statement(self) -> Statement:
         if self.match(TokenType.IF):
             return self.if_stmt()
         elif self.match(TokenType.PRINT):
             return self.print_stmt()
+        elif self.match(TokenType.FOR):
+            return self.for_stmt()
+        elif self.match(TokenType.WHILE):
+            return self.while_stmt()
         elif self.match(TokenType.LEFT_BRACE):
             return self.block()
         else:
