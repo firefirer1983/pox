@@ -19,6 +19,16 @@ class TestAstPrinter:
             AstPrinter().visit(expr) == "-1"
         )
 
+        expr = Parser(Scanner("--1").scan_tokens()).expression()
+        assert (
+            AstPrinter().visit(expr) == "1"
+        )
+
+        expr = Parser(Scanner("---1").scan_tokens()).expression()
+        assert (
+            AstPrinter().visit(expr) == "-1"
+        )
+
     def test_parse_binary_expr(self):
         assert (
             AstPrinter().visit(Parser(Scanner("5+1").scan_tokens()).expression())
@@ -72,12 +82,12 @@ class TestAstPrinter:
 
         stmts = Parser(tokens).parse()
         assert len(stmts) == 1
-        assert AstPrinter().visit(stmts[0]) == "var a=5;"
+        assert AstPrinter().visit(stmts[0]) == "{var a=5;}"
 
     def test_parse_if_stmt(self):
         tokens = Scanner("if (a>5) {a=3;}").scan_tokens()
         stmt = Parser(tokens).declaration()
-        assert AstPrinter().visit(stmt) == "if ((a>5))a=3;"
+        assert AstPrinter().visit(stmt) == "if ((a>5)){a=3;}"
 
     def test_parse_logical_expr(self):
         tokens = Scanner("true or false").scan_tokens()

@@ -45,6 +45,15 @@ class TestInterpretExpr:
 
 
 class TestInterpretStmt:
+    def test_unary_expr(self):
+        interpreter = Interpreter()
+        expr = Parser(Scanner("-1").scan_tokens()).expression()
+        assert interpreter.visit(expr) == -1
+        expr = Parser(Scanner("--1").scan_tokens()).expression()
+        assert interpreter.visit(expr) == 1
+        expr = Parser(Scanner("---1").scan_tokens()).expression()
+        assert interpreter.visit(expr) == -1
+
     def test_var_declaration_without_initializer(self):
         interpreter = Interpreter()
         stmts = Parser(Scanner("var a;").scan_tokens()).parse()
@@ -164,3 +173,9 @@ class TestInterpretStmt:
         stmts = Parser(tokens).parse()
         assert len(stmts) == 1
         interpreter.visit(stmts[0])
+
+    def test_func_call_expr(self):
+        interpreter = Interpreter()
+        tokens = Scanner("assert(0)").scan_tokens()
+        expr = Parser(tokens).call()
+        assert len(expr.arguments) == 1

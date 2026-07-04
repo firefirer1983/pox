@@ -51,6 +51,10 @@ class Logical(Expression):
         self.operator = operator
         self.right = right
 
+class Call(Expression):
+    def __init__(self, expr: Expression, arguments: list[Expression]):
+        self.expr = expr
+        self.arguments = arguments
 
 class Expr:
     Binary = Binary
@@ -60,3 +64,4 @@ class Expr:
     Variable = Variable
     Assign = Assign
     Logical = Logical
+    Call = Call

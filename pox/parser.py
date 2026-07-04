@@ -266,10 +266,25 @@ class Parser:
         return expr
 
     @log_trace
+    def call(self)-> Expression:
+        expr = self.primary()
+        if self.match(TokenType.LEFT_PAREN):
+            if self.match(TokenType.RIGHT_PAREN):
+                return Expr.Call(expr, [])
+            arguments = list()
+            while True:
+                arg = self.expression()
+                if not self.check(TokenType.RIGHT_PAREN):
+                    self.consume(TokenType.COMMA, "Expect ',' after argument")
+                arguments.append(arg)
+            return Expr.Call(expr, arguments)
+        return expr
+
+    @log_trace
     def unary(self) -> Expression:
         if self.match(TokenType.MINUS, TokenType.BANG):
-            return Expr.Unary(self.previous(), self.primary())
-        return self.primary()
+            return Expr.Unary(self.previous(), self.unary())
+        return self.call()
 
     @log_trace
     def primary(self) -> Expression:

@@ -26,7 +26,9 @@ class AstPrinter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Binary) -> str:
-        return f"({self.visit(expr.left)}{expr.operator.lexeme}{self.visit(expr.right)})"
+        return (
+            f"({self.visit(expr.left)}{expr.operator.lexeme}{self.visit(expr.right)})"
+        )
 
     @visit.register
     def _(self, expr: Expr.Literal) -> str:
@@ -87,6 +89,16 @@ class AstPrinter(Visitor):
     @visit.register
     def _(self, stmt: Stmt.While) -> str:
         return f"while({self.visit(stmt.condition)}){self.visit(stmt.statement)}"
+
+    @visit.register
+    def _(self, expr: Expr.Call) -> str:
+        result = f"{self.visit(expr.expr)}("
+        for i, arg in enumerate(expr.arguments):
+            result += f"{self.visit(arg)}"
+            if i + 1 == len(expr.arguments):
+                break
+            result += ","
+        return result
 
 
 class Interpreter(Visitor):
@@ -208,4 +220,4 @@ class Interpreter(Visitor):
     @visit.register
     def _(self, stmt: Stmt.While, env: Environment = global_env):
         while is_true(self.visit(stmt.condition, env)):
-            self.visit(stmt.body, env)
+            self.visit(stmt.statement, env)
