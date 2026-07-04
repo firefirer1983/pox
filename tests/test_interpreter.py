@@ -102,3 +102,58 @@ class TestInterpretStmt:
         assert global_env.get("a") == 5
         interpreter.visit(stmts[1])
         assert global_env.get("a") == 2
+
+    def test_if_statement(self):
+        interpreter = Interpreter()
+        tokens = Scanner("var a=1;if (true){a=3;}else{a=4;}").scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts)== 2
+        interpreter.visit(stmts[0])
+        interpreter.visit(stmts[1])
+        assert global_env.get("a") == 3
+
+    def test_else_statement(self):
+        interpreter = Interpreter()
+        tokens = Scanner("var a=1;if (false){a=3;}else{a=4;}").scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts)== 2
+        interpreter.visit(stmts[0])
+        interpreter.visit(stmts[1])
+        assert global_env.get("a") == 4
+
+    def test_logical_expr(self):
+        interpreter = Interpreter()
+        tokens = Scanner("true or false").scan_tokens()
+        expr = Parser(tokens).expression()
+        interpreter.visit(expr) == True
+
+        tokens = Scanner("false or true").scan_tokens()
+        expr = Parser(tokens).expression()
+        interpreter.visit(expr) == True
+
+        tokens = Scanner("false and true").scan_tokens()
+        expr = Parser(tokens).expression()
+        interpreter.visit(expr) == False
+
+        tokens = Scanner("true and true").scan_tokens()
+        expr = Parser(tokens).expression()
+        interpreter.visit(expr) == True
+
+        interpreter = Interpreter()
+        tokens = Scanner("var a=false or true;").scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts) == 1
+        interpreter.visit(stmts[0])
+        assert global_env.get("a") == True
+
+    def test_nested_or_expr(self):
+        interpreter = Interpreter()
+        tokens = Scanner("false or false or true or false").scan_tokens()
+        expr = Parser(tokens).expression()
+        assert interpreter.visit(expr) == True
+
+    def test_nested_and_expr(self):
+        interpreter = Interpreter()
+        tokens = Scanner("true and true and false").scan_tokens()
+        expr = Parser(tokens).expression()
+        assert interpreter.visit(expr) == False

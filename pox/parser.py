@@ -1,3 +1,4 @@
+from typing import Callable
 from typing import Generator
 import logging
 
@@ -14,10 +15,23 @@ def yild_stmt(gen: Generator[Statement, None, None]) -> Statement:
     return next(iter(gen))
 
 
+def log_trace(f: Callable):
+    def _wrapper(*args, **kwargs):
+        logger.info(f"% {f.__name__}")
+        return f(*args, **kwargs)
+
+    return _wrapper
+
+
 class Parser:
     def __init__(self, tokens: list[Token]):
         self.tokens = tokens
         self.start = self.current = 0
+
+    @property
+    def t(self)-> str:
+        tkn = self.tokens[self.current]
+        return f"<{tkn.token_type}({tkn.lexeme})>"
 
     def peek(self) -> Token:
         return self.tokens[self.current]
@@ -74,11 +88,13 @@ class Parser:
                 statements.append(stmt)
         return statements
 
+    @log_trace
     def declaration(self) -> Statement:
         if self.match(TokenType.VAR):
             return self.var_declaration()
         return self.statement()
 
+    @log_trace
     def var_declaration(self) -> Statement:
         name = self.consume(TokenType.IDENTIFIER, "Expect Variable Name")
         initializer = None
@@ -87,6 +103,7 @@ class Parser:
         self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration")
         return Stmt.Var(name, initializer)
 
+    @log_trace
     def block(self) -> Statement:
         statements = list()
         while not self.check(TokenType.RIGHT_BRACE) and not self.is_end():
@@ -95,6 +112,7 @@ class Parser:
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block")
         return Stmt.Block(statements)
 
+    @log_trace
     def if_stmt(self) -> Stmt.IF:
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after if")
         condition = self.expression()
@@ -105,6 +123,7 @@ class Parser:
             alternative = self.statement()
         return Stmt.IF(condition, consequent, alternative)
 
+    @log_trace
     def statement(self) -> Statement:
         if self.match(TokenType.IF):
             return self.if_stmt()
@@ -115,20 +134,23 @@ class Parser:
         else:
             return self.expr_stmt()
 
+    @log_trace
     def expr_stmt(self) -> Stmt.ExprStmt:
         expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after expression")
         return Stmt.ExprStmt(expr)
 
+    @log_trace
     def print_stmt(self) -> Stmt.PrintStmt:
         expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after expression")
         return Stmt.PrintStmt(expr)
 
-
+    @log_trace
     def expression(self) -> Expression:
         return self.assignment()
 
+    @log_trace
     def assignment(self) -> Expression:
         expr = self.or_expr()
         if self.match(TokenType.EQUAL):
@@ -136,10 +158,10 @@ class Parser:
             value = self.or_expr()
             if isinstance(expr, Expr.Variable):
                 return Expr.Assign(expr.identify, value)
-            raise ParseError("Invalid assignment target")
         return expr
 
-    def or_expr(self)-> Expression:
+    @log_trace
+    def or_expr(self) -> Expression:
         left = self.and_expr()
         if self.match(TokenType.OR):
             token = self.previous()
@@ -147,14 +169,16 @@ class Parser:
             return Expr.Logical(left, token, right)
         return left
 
+    @log_trace
     def and_expr(self) -> Expression:
         left = self.equality()
-        if self.match(TokenType.AND):
+        if self.match(TokenType.AND, TokenType.OR):
             token = self.previous()
-            right = self.equality()
+            right = self.or_expr()
             return Expr.Logical(left, token, right)
         return left
 
+    @log_trace
     def equality(self) -> Expression:
         expr = self.comparision()
         while self.match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL):
@@ -162,6 +186,7 @@ class Parser:
             expr = Expr.Binary(expr, self.previous(), right)
         return expr
 
+    @log_trace
     def comparision(self) -> Expression:
         expr = self.term()
         while self.match(
@@ -175,6 +200,7 @@ class Parser:
             expr = Expr.Binary(expr, operator, right)
         return expr
 
+    @log_trace
     def term(self) -> Expression:
         expr = self.factor()
         while self.match(TokenType.PLUS, TokenType.MINUS):
@@ -183,6 +209,7 @@ class Parser:
             expr = Expr.Binary(expr, operator, right)
         return expr
 
+    @log_trace
     def factor(self) -> Expression:
         expr = self.unary()
         while self.match(TokenType.STAR, TokenType.SLASH):
@@ -191,33 +218,46 @@ class Parser:
             expr = Expr.Binary(expr, operator, right)
         return expr
 
+    @log_trace
     def unary(self) -> Expression:
         if self.match(TokenType.MINUS, TokenType.BANG):
             return Expr.Unary(self.previous(), self.primary())
         return self.primary()
 
+    @log_trace
     def primary(self) -> Expression:
         if self.match(TokenType.TRUE):
+            logger.info("@Literal<true>")
             return Expr.Literal(True)
 
         if self.match(TokenType.FALSE):
+            logger.info("@Literal<false>")
             return Expr.Literal(False)
 
         if self.match(TokenType.NIL):
+            logger.info("@Literal<nil>")
             return Expr.Literal(None)
 
-        if self.match(TokenType.NUMBER, TokenType.STRING):
+        if self.match(TokenType.NUMBER):
+            logger.info("@Literal<number>")
+            return Expr.Literal(self.previous().literal)
+
+        if self.match(TokenType.STRING):
+            logger.info("@Literal<string>")
             return Expr.Literal(self.previous().literal)
 
         if self.match(TokenType.LEFT_PAREN):
             expr = self.expression()
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expressoin")
+            logger.info("@Grouping")
             return Expr.Grouping(expr)
 
         if self.match(TokenType.IDENTIFIER):
+            logger.info("@Var")
             return Expr.Variable(self.previous())
 
         raise ParseError()
 
+    @log_trace
     def number(self):
         return self.peek()

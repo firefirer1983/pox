@@ -1,3 +1,4 @@
+from pox.base import Statement
 from pox.environment import global_env
 import logging
 import logging
@@ -7,12 +8,12 @@ from .token import TokenType
 from .environment import Environment
 from .expression import Expr
 from .statement import Stmt
-from .base import Visitor, Expression, LiteralTypes, ParseError, literal2str, is_true
+from .base import Visitor, Expression, LiteralTypes, ParseError, literal2str, is_true, RunError
 
 
 class AstPrinter(Visitor):
     @singledispatchmethod
-    def visit(self, expr: Expression) -> str:
+    def visit(self, expr: Expression | Statement) -> str:
         raise NotImplementedError(type(expr))
 
     @visit.register
@@ -87,13 +88,13 @@ class Interpreter(Visitor):
         logging.basicConfig(level=logging.INFO)
 
     @singledispatchmethod
-    def visit(self, expr: Expression, env: Environment) -> LiteralTypes:
+    def visit(self, expr: Expression, env: Environment = global_env) -> LiteralTypes:
         raise NotImplementedError(type(expr))
 
     @visit.register
     def _(self, expr: Expr.Binary, env: Environment = global_env) -> LiteralTypes:
-        left = self.visit(expr.left)
-        right = self.visit(expr.right)
+        left = self.visit(expr.left, env)
+        right = self.visit(expr.right, env)
         match expr.operator.token_type:
             case TokenType.GREATER:
                 # pyrefly:ignore[unsupported-operation]
@@ -134,7 +135,7 @@ class Interpreter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Unary, env: Environment = global_env) -> LiteralTypes:
-        right = self.visit(expr.right)
+        right = self.visit(expr.right, env)
         if expr.operator.token_type == TokenType.MINUS:
             if not isinstance(right, (float, int)):
                 raise ParseError()
@@ -145,7 +146,7 @@ class Interpreter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Grouping, env: Environment = global_env) -> LiteralTypes:
-        return expr.expr.accept(self)
+        return self.visit(expr.expr, env)
 
     @visit.register
     def _(self, expr: Expr.Variable, env: Environment = global_env) -> LiteralTypes:
@@ -153,11 +154,11 @@ class Interpreter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Assign, env: Environment = global_env) -> LiteralTypes:
-        env.assign(expr.identify.lexeme, self.visit(expr.value))
+        env.assign(expr.identify.lexeme, self.visit(expr.value, env))
 
     @visit.register
     def _(self, stmt: Stmt.PrintStmt, env: Environment = global_env):
-        string = literal2str(self.visit(stmt.expr))
+        string = literal2str(self.visit(stmt.expr, env))
         sys.stdout.write(string)
         sys.stdout.flush()
 
@@ -179,8 +180,21 @@ class Interpreter(Visitor):
             self.visit(statement, env)
 
     @visit.register
-    def _(self, stmt: Stmt.IF):
-        if is_true(self.visit(stmt.condition)):
-            self.visit(stmt.consequent)
+    def _(self, stmt: Stmt.IF, env: Environment = global_env):
+        if is_true(self.visit(stmt.condition, env)):
+            self.visit(stmt.consequent, env)
         elif stmt.alternative:
-            self.visit(stmt.alternative)
+            self.visit(stmt.alternative, env)
+
+    @visit.register
+    def _(self, expr: Expr.Logical, env: Environment = global_env)-> bool:
+        if expr.operator.token_type == TokenType.OR:
+            if is_true(self.visit(expr.left, env)):
+                return True
+            return bool(self.visit(expr.right, env))
+        elif expr.operator.token_type == TokenType.AND:
+            if is_true(self.visit(expr.left, env)):
+                return bool(self.visit(expr.right, env))
+            return False
+        else:
+            raise RunError(f"Invalid Operator: {expr.operator.lexeme}")

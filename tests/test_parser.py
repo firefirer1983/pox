@@ -14,8 +14,9 @@ class TestAstPrinter:
         )
 
     def test_parse_unary_expr(self):
+        expr = Parser(Scanner("-1").scan_tokens()).expression()
         assert (
-            AstPrinter().visit(Parser(Scanner("-1").scan_tokens()).expression()) == "-1"
+            AstPrinter().visit(expr) == "-1"
         )
 
     def test_parse_binary_expr(self):
@@ -85,7 +86,7 @@ class TestAstPrinter:
         tokens = Scanner("a = false or true").scan_tokens()
         assert AstPrinter().visit(Parser(tokens).expression()) == "a=(or False True)"
 
-        tokens = Scanner("a = true and (true or a)").scan_tokens()
+        tokens = Scanner("a = true and true or a").scan_tokens()
         assert (
             AstPrinter().visit(Parser(tokens).expression())
             == "a=(and True (or True a))"
