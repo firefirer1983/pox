@@ -269,13 +269,9 @@ class Parser:
     def call(self)-> Expression:
         expr = self.primary()
         if self.match(TokenType.LEFT_PAREN):
-            if self.match(TokenType.RIGHT_PAREN):
-                return Expr.Call(expr, [])
             arguments = list()
-            while True:
+            while not self.match(TokenType.RIGHT_PAREN):
                 arg = self.expression()
-                if not self.check(TokenType.RIGHT_PAREN):
-                    self.consume(TokenType.COMMA, "Expect ',' after argument")
                 arguments.append(arg)
             return Expr.Call(expr, arguments)
         return expr
@@ -318,7 +314,7 @@ class Parser:
             logger.info("@Var")
             return Expr.Variable(self.previous())
 
-        raise ParseError(f"Error Token: {self.peek().lexeme}")
+        raise ParseError(f"Error Token: '{self.peek().lexeme}'")
 
     @log_trace
     def number(self):
