@@ -273,6 +273,8 @@ class Parser:
             while not self.match(TokenType.RIGHT_PAREN):
                 arg = self.expression()
                 arguments.append(arg)
+                if not self.match(TokenType.COMMA):
+                    break
             return Expr.Call(expr, arguments)
         return expr
 

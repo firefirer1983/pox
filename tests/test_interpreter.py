@@ -173,9 +173,3 @@ class TestInterpretStmt:
         stmts = Parser(tokens).parse()
         assert len(stmts) == 1
         interpreter.visit(stmts[0])
-
-    def test_func_call_expr(self):
-        interpreter = Interpreter()
-        tokens = Scanner("assert(0)").scan_tokens()
-        expr = Parser(tokens).call()
-        assert len(expr.arguments) == 1

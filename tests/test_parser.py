@@ -119,3 +119,20 @@ class TestAstPrinter:
         tokens = Scanner("for(var a=0;a<10;a=a+1){a=6;}").scan_tokens()
         statment = Parser(tokens).statement()
         assert AstPrinter().visit(statment) == "{var a=0;while((a<10)){a=6;a=(a+1);}}"
+
+    def test_parse_func_call_expr(self):
+        # tokens = Scanner("assert(0)").scan_tokens()
+        # expr = Parser(tokens).call()
+        # assert len(expr.arguments) == 1
+
+        tokens = Scanner("assert(1,2,3)").scan_tokens()
+        expr = Parser(tokens).call()
+        assert len(expr.arguments) == 3
+
+        tokens = Scanner("assert(0)('abc')(nil)(true)").scan_tokens()
+        expr = Parser(tokens).call()
+        assert len(expr.arguments) == 1
+
+        tokens = Scanner("assert(0)('abc')(nil)(true, a, b)").scan_tokens()
+        expr = Parser(tokens).call()
+        assert len(expr.arguments) == 3
