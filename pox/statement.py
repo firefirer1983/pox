@@ -1,4 +1,5 @@
-from typing import Optional
+from abc import abstractmethod
+from typing import Optional, Any, cast
 from .base import Statement, Expression
 from .token import Token
 
@@ -30,6 +31,13 @@ class While(Statement):
         self.condition = condition
         self.statement = statement
 
+class Function(Statement):
+    def __init__(self, name: str, arguments: list[str], block: Block):
+        self.name = name
+        self.parameters = arguments[:]
+        self.block = block
+
+
 class Stmt:
     PrintStmt = PrintStmt
     ExprStmt = ExprStmt
@@ -37,3 +45,4 @@ class Stmt:
     Block = Block
     IF = IF
     While = While
+    Function = Function

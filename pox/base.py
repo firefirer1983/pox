@@ -2,7 +2,16 @@ from typing import Any
 from abc import ABC, abstractmethod
 from functools import singledispatchmethod
 
-LiteralTypes = bool | str | int | float | None
+
+class PoxCallable:
+    @abstractmethod
+    def arity(self) -> int: ...
+
+    @abstractmethod
+    def to_str(self) -> str: ...
+
+
+LiteralTypes = bool | str | int | float | None | PoxCallable
 
 
 class ParseError(SyntaxError):

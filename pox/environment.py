@@ -1,5 +1,4 @@
-from pox.base import LiteralTypes
-from .token import Token
+from .base import LiteralTypes
 from .base import RunError
 from typing import Any
 from typing import Optional
@@ -29,6 +28,8 @@ class Environment:
                 return
             env = env.enclosing
         raise RunError(f"Variable assign {name} not found!")
+
+
 
 
 global_env = Environment()

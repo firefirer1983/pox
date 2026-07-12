@@ -1,6 +1,7 @@
-from typing import Callable
+from abc import abstractmethod
+from typing import Callable, cast
 from functools import wraps
-from typing import Generator
+from typing import Generator, Any
 import logging
 from typing import Callable, TypeVar, ParamSpec
 
@@ -95,6 +96,9 @@ class Parser:
 
     @log_trace
     def declaration(self) -> Statement:
+        if self.match(TokenType.FUN):
+            return self.func_declaration()
+
         if self.match(TokenType.VAR):
             return self.var_declaration()
         return self.statement()
@@ -107,6 +111,26 @@ class Parser:
             initializer = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration")
         return Stmt.Var(name, initializer)
+
+    @log_trace
+    def func_declaration(self)-> Stmt.Function:
+        name = self.consume(TokenType.IDENTIFIER, "Expect function name")
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after function name")
+        arguments = list()
+        while not self.match(TokenType.RIGHT_PAREN):
+            if self.match(TokenType.IDENTIFIER):
+                arg = self.previous()
+                arguments.append(arg)
+
+            if self.match(TokenType.COMMA):
+                continue
+
+            self.consume(TokenType.RIGHT_PAREN, "Expect ')' after (")
+            break
+
+        block = self.block()
+        return Stmt.Function(name.lexeme, [arg.lexeme for arg in arguments], block)
+
 
     @log_trace
     def block(self) -> Stmt.Block:
@@ -274,6 +298,7 @@ class Parser:
                 arg = self.expression()
                 arguments.append(arg)
                 if not self.match(TokenType.COMMA):
+                    self.consume(TokenType.RIGHT_PAREN, "Expect ')' after function argment list")
                     break
             return Expr.Call(expr, arguments)
         return expr

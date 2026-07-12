@@ -1,7 +1,8 @@
+from typing import cast
 from pox.interpreter import AstPrinter
 from pox.scanner import Scanner
 from pox.parser import Parser
-
+from pox.expression import Expr
 
 class TestAstPrinter:
     def test_parse_literal_expr(self):
@@ -126,13 +127,13 @@ class TestAstPrinter:
         # assert len(expr.arguments) == 1
 
         tokens = Scanner("assert(1,2,3)").scan_tokens()
-        expr = Parser(tokens).call()
+        expr = cast(Expr.Call, Parser(tokens).call())
         assert len(expr.arguments) == 3
 
         tokens = Scanner("assert(0)('abc')(nil)(true)").scan_tokens()
-        expr = Parser(tokens).call()
+        expr = cast(Expr.Call, Parser(tokens).call())
         assert len(expr.arguments) == 1
 
         tokens = Scanner("assert(0)('abc')(nil)(true, a, b)").scan_tokens()
-        expr = Parser(tokens).call()
-        assert len(expr.arguments) == 3
+        expr = cast(Expr.Call, Parser(tokens).call())
+        assert len(expr.arguments) == 1

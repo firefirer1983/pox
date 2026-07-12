@@ -1,11 +1,13 @@
-from pox.base import Statement
-from pox.environment import global_env
-import logging
-import logging
 import sys
+import logging
+from typing import cast
+
 from functools import singledispatchmethod
 from .token import TokenType
-from .environment import Environment
+from .environment import Environment, global_env
+from .base import Statement
+
+from .callables import PoxFunction
 from .expression import Expr
 from .statement import Stmt
 from .base import (
@@ -221,3 +223,20 @@ class Interpreter(Visitor):
     def _(self, stmt: Stmt.While, env: Environment = global_env):
         while is_true(self.visit(stmt.condition, env)):
             self.visit(stmt.statement, env)
+
+    @visit.register
+    def _(self, expr: Expr.Call, env: Environment = global_env):
+        callee = cast(PoxFunction, self.visit(expr.expr, env))
+        arguments = [self.visit(arg) for arg in expr.arguments]
+        if len(arguments) != callee.arity:
+            raise RunError(f"实参数目:{len(arguments)} != 形参数目:{callee.arity}")
+        env = Environment(env)
+        for name, value in zip(callee.parameters, arguments):
+            env.define(name , value)
+        self.visit(callee.block, env)
+
+
+    @visit.register
+    def _(self, stmt: Stmt.Function, env: Environment = global_env):
+        func = PoxFunction(stmt)
+        env.define(stmt.name, func)
