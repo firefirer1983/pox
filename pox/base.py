@@ -22,6 +22,13 @@ class RunError(RuntimeError):
     pass
 
 
+class ReturnException(RuntimeError):
+    def __init__(self, value: LiteralTypes):
+        self.value = value
+
+    def get_value(self):
+        return self.value
+
 class Expression(ABC):
     def accept(self, visitor: "Visitor"):
         return visitor.visit(self)

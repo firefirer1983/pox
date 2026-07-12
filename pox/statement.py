@@ -1,41 +1,59 @@
+from pox.base import LiteralTypes
 from abc import abstractmethod
 from typing import Optional, Any, cast
 from .base import Statement, Expression
 from .token import Token
 
+
 class PrintStmt(Statement):
     def __init__(self, expr: Expression):
         self.expr = expr
 
+
 class ExprStmt(Statement):
     def __init__(self, expr: Expression):
         self.expr = expr
+
 
 class Var(Statement):
     def __init__(self, name: Token, initilaizer: Optional[Expression] = None):
         self.name = name
         self.initializer = initilaizer
 
+
 class Block(Statement):
     def __init__(self, statements: list[Statement]):
         self.statements = statements
 
+
 class IF(Statement):
-    def __init__(self, condition: Expression, consequent: Statement, alternative: Optional[Statement] = None):
+    def __init__(
+        self,
+        condition: Expression,
+        consequent: Statement,
+        alternative: Optional[Statement] = None,
+    ):
         self.condition = condition
         self.consequent = consequent
         self.alternative = alternative
+
 
 class While(Statement):
     def __init__(self, condition: Expression, statement: Statement):
         self.condition = condition
         self.statement = statement
 
+
 class Function(Statement):
     def __init__(self, name: str, arguments: list[str], block: Block):
         self.name = name
         self.parameters = arguments[:]
         self.block = block
+
+
+class Return(Statement):
+    def __init__(self, expr: Expression):
+        self.value = expr
 
 
 class Stmt:
@@ -46,3 +64,4 @@ class Stmt:
     IF = IF
     While = While
     Function = Function
+    Return = Return

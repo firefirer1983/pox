@@ -161,6 +161,15 @@ class Parser:
         return Stmt.While(condition, body)
 
     @log_trace
+    def return_stmt(self) -> Stmt.Return:
+        if self.match(TokenType.SEMICOLON):
+            return Stmt.Return(Expr.Literal(None))
+
+        expr = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' end of return")
+        return Stmt.Return(expr)
+
+    @log_trace
     def for_stmt(self) -> Stmt.While | Stmt.Block:
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after for")
         if self.match(TokenType.SEMICOLON):
@@ -196,6 +205,8 @@ class Parser:
             return self.if_stmt()
         elif self.match(TokenType.PRINT):
             return self.print_stmt()
+        elif self.match(TokenType.RETURN):
+            return self.return_stmt()
         elif self.match(TokenType.FOR):
             return self.for_stmt()
         elif self.match(TokenType.WHILE):

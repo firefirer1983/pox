@@ -5,7 +5,7 @@ from typing import cast
 from functools import singledispatchmethod
 from .token import TokenType
 from .environment import Environment, global_env
-from .base import Statement
+from .base import Statement, ReturnException
 
 from .callables import PoxFunction
 from .expression import Expr
@@ -232,11 +232,17 @@ class Interpreter(Visitor):
             raise RunError(f"实参数目:{len(arguments)} != 形参数目:{callee.arity}")
         env = Environment(env)
         for name, value in zip(callee.parameters, arguments):
-            env.define(name , value)
-        self.visit(callee.block, env)
-
+            env.define(name, value)
+        try:
+            self.visit(callee.block, env)
+        except ReturnException as exc:
+            return exc.get_value()
 
     @visit.register
     def _(self, stmt: Stmt.Function, env: Environment = global_env):
         func = PoxFunction(stmt)
         env.define(stmt.name, func)
+
+    @visit.register
+    def _(self, stmt: Stmt.Return, env: Environment = global_env):
+        raise ReturnException(self.visit(stmt.value, env))
