@@ -102,6 +102,16 @@ class AstPrinter(Visitor):
             result += ","
         return result
 
+    @visit.register
+    def _(self, stmt: Stmt.Function)-> str:
+        result = f"fun {stmt.name}({','.join(stmt.parameters)})"
+        result += f"{self.visit(stmt.block)}"
+        return result
+
+    @visit.register
+    def _(self, stmt: Stmt.Return)-> str:
+        return f"return {self.visit(stmt.value)};"
+
 
 class Interpreter(Visitor):
     def __init__(self):
@@ -225,7 +235,7 @@ class Interpreter(Visitor):
             self.visit(stmt.statement, env)
 
     @visit.register
-    def _(self, expr: Expr.Call, env: Environment = global_env):
+    def _(self, expr: Expr.Call, env: Environment = global_env)-> LiteralTypes:
         callee = cast(PoxFunction, self.visit(expr.expr, env))
         arguments = [self.visit(arg) for arg in expr.arguments]
         if len(arguments) != callee.arity:
@@ -233,6 +243,7 @@ class Interpreter(Visitor):
         env = Environment(env)
         for name, value in zip(callee.parameters, arguments):
             env.define(name, value)
+
         try:
             self.visit(callee.block, env)
         except ReturnException as exc:

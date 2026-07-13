@@ -3,6 +3,8 @@ from pox.interpreter import AstPrinter
 from pox.scanner import Scanner
 from pox.parser import Parser
 from pox.expression import Expr
+from pox.statement import Stmt
+
 
 class TestAstPrinter:
     def test_parse_literal_expr(self):
@@ -16,19 +18,13 @@ class TestAstPrinter:
 
     def test_parse_unary_expr(self):
         expr = Parser(Scanner("-1").scan_tokens()).expression()
-        assert (
-            AstPrinter().visit(expr) == "-1"
-        )
+        assert AstPrinter().visit(expr) == "-1"
 
         expr = Parser(Scanner("--1").scan_tokens()).expression()
-        assert (
-            AstPrinter().visit(expr) == "1"
-        )
+        assert AstPrinter().visit(expr) == "1"
 
         expr = Parser(Scanner("---1").scan_tokens()).expression()
-        assert (
-            AstPrinter().visit(expr) == "-1"
-        )
+        assert AstPrinter().visit(expr) == "-1"
 
     def test_parse_binary_expr(self):
         assert (
@@ -137,3 +133,10 @@ class TestAstPrinter:
         tokens = Scanner("assert(0)('abc')(nil)(true, a, b)").scan_tokens()
         expr = cast(Expr.Call, Parser(tokens).call())
         assert len(expr.arguments) == 1
+
+    def test_parse_func_def_statement(self):
+        tokens = Scanner("fun test(){return 0;}").scan_tokens()
+        stmt: Stmt.Function = cast(Stmt.Function, Parser(tokens).declaration())
+        assert stmt.parameters == []
+        assert stmt.name == "test"
+        assert AstPrinter().visit(stmt) == "fun test(){return 0;}"

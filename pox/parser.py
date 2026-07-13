@@ -35,7 +35,7 @@ class Parser:
         self.start = self.current = 0
 
     @property
-    def t(self)-> str:
+    def cur(self)-> str:
         tkn = self.tokens[self.current]
         return f"<{tkn.token_type}({tkn.lexeme})>"
 
@@ -110,6 +110,7 @@ class Parser:
         if self.match(TokenType.EQUAL):
             initializer = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration")
+        logger.info(f"@Stmt.Var")
         return Stmt.Var(name, initializer)
 
     @log_trace
@@ -127,8 +128,9 @@ class Parser:
 
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after (")
             break
-
+        self.consume(TokenType.LEFT_BRACE, "Expect '{' after )")
         block = self.block()
+        logger.info(f"@Stmt.Function")
         return Stmt.Function(name.lexeme, [arg.lexeme for arg in arguments], block)
 
 
@@ -139,6 +141,7 @@ class Parser:
             stmt = self.declaration()
             statements.append(stmt)
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block")
+        logger.info(f"@Stmt.Block")
         return Stmt.Block(statements)
 
     @log_trace
@@ -150,6 +153,7 @@ class Parser:
         alternative = None
         if self.match(TokenType.ELSE):
             alternative = self.statement()
+        logger.info(f"@Stmt.IF")
         return Stmt.IF(condition, consequent, alternative)
 
     @log_trace
@@ -158,6 +162,7 @@ class Parser:
         condition = self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after if")
         body = self.statement()
+        logger.info(f"@Stmt.While")
         return Stmt.While(condition, body)
 
     @log_trace
@@ -196,7 +201,9 @@ class Parser:
             body.statements = body.statements + [Stmt.ExprStmt(increment)]
 
         if initializer:
+            logger.info(f"@Stmt.Block")
             return Stmt.Block([initializer, Stmt.While(cond, body)])
+        logger.info(f"@Stmt.While")
         return Stmt.While(cond, body)
 
     @log_trace
@@ -220,12 +227,14 @@ class Parser:
     def expr_stmt(self) -> Stmt.ExprStmt:
         expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after expression")
+        logger.info(f"@Stmt.ExprStmt")
         return Stmt.ExprStmt(expr)
 
     @log_trace
     def print_stmt(self) -> Stmt.PrintStmt:
         expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after expression")
+        logger.info(f"@Stmt.PrintStmt")
         return Stmt.PrintStmt(expr)
 
     @log_trace
@@ -239,6 +248,7 @@ class Parser:
             eq = self.previous()
             value = self.or_expr()
             if isinstance(expr, Expr.Variable):
+                logger.info(f"@Expr.Assign")
                 return Expr.Assign(expr.identify, value)
         return expr
 
@@ -248,6 +258,7 @@ class Parser:
         if self.match(TokenType.OR):
             token = self.previous()
             right = self.and_expr()
+            logger.info(f"@Expr.Logical")
             return Expr.Logical(left, token, right)
         return left
 
@@ -257,6 +268,7 @@ class Parser:
         if self.match(TokenType.AND, TokenType.OR):
             token = self.previous()
             right = self.or_expr()
+            logger.info(f"@Expr.Logical")
             return Expr.Logical(left, token, right)
         return left
 
@@ -280,6 +292,7 @@ class Parser:
             operator = self.previous()
             right = self.term()
             expr = Expr.Binary(expr, operator, right)
+
         return expr
 
     @log_trace
@@ -311,12 +324,14 @@ class Parser:
                 if not self.match(TokenType.COMMA):
                     self.consume(TokenType.RIGHT_PAREN, "Expect ')' after function argment list")
                     break
+            logger.info("@Expr.Call")
             return Expr.Call(expr, arguments)
         return expr
 
     @log_trace
     def unary(self) -> Expression:
         if self.match(TokenType.MINUS, TokenType.BANG):
+            logger.info("@Expr.Unary")
             return Expr.Unary(self.previous(), self.unary())
         return self.call()
 
