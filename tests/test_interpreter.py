@@ -173,3 +173,10 @@ class TestInterpretStmt:
         stmts = Parser(tokens).parse()
         assert len(stmts) == 1
         interpreter.visit(stmts[0])
+
+    def test_func_def_statement(self):
+        interpreter = Interpreter()
+        tokens = Scanner("fun test(){return 0;}").scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts) == 1
+        interpreter.visit(stmts[0])
