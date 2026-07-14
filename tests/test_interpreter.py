@@ -1,8 +1,10 @@
+from typing import cast
+from pox.callables import PoxFunction
 from pox.environment import global_env
 from pox.interpreter import Interpreter
 from pox.parser import Parser
 from pox.scanner import Scanner
-
+from pox.statement import Stmt
 
 class TestInterpretExpr:
     def test_parse_literal_expr(self):
@@ -176,7 +178,15 @@ class TestInterpretStmt:
 
     def test_func_def_statement(self):
         interpreter = Interpreter()
-        tokens = Scanner("fun test(){return 0;}").scan_tokens()
+        tokens = Scanner("fun test(a, b, c){return 0;}").scan_tokens()
         stmts = Parser(tokens).parse()
         assert len(stmts) == 1
         interpreter.visit(stmts[0])
+        testfunc = cast(PoxFunction, global_env.get("test"))
+        assert testfunc.arity() == 3
+        assert testfunc.parameters[0] == "a"
+        assert testfunc.parameters[1] == "b"
+        assert testfunc.parameters[2] == "c"
+        assert len(testfunc.block.statements) == 1
+        ret_stmt = cast(Stmt.Return, testfunc.block.statements[0])
+        assert interpreter.visit(ret_stmt.value) == 0
