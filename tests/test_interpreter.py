@@ -1,3 +1,4 @@
+import time
 from typing import cast
 from pox.callables import PoxFunction
 from pox.environment import global_env
@@ -176,6 +177,14 @@ class TestInterpretStmt:
         assert len(stmts) == 1
         interpreter.visit(stmts[0])
 
+    def test_func_call_expr(self):
+        interpreter = Interpreter()
+        tokens = Scanner("time();").scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts) == 1
+        result = cast(float, interpreter.visit(stmts[0], global_env))
+        assert int(result) == int(time.time())
+
     def test_func_def_statement(self):
         interpreter = Interpreter()
         tokens = Scanner("fun test(a, b, c){return 0;}").scan_tokens()
@@ -190,3 +199,56 @@ class TestInterpretStmt:
         assert len(testfunc.block.statements) == 1
         ret_stmt = cast(Stmt.Return, testfunc.block.statements[0])
         assert interpreter.visit(ret_stmt.value) == 0
+
+    def test_func_def_params_statements(self):
+        interpreter = Interpreter()
+        tokens = Scanner("fun test(a, b){return a*b;}test(2,3);").scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts) == 2
+        interpreter.visit(stmts[0])
+        assert interpreter.visit(stmts[1]) == 6
+
+    def test_func_def_and_call_statement(self):
+        interpreter = Interpreter()
+        tokens = Scanner("fun test(){return 0;}test();").scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts) == 2
+        interpreter.visit(stmts[0])
+        assert interpreter.visit(stmts[1]) == 0
+
+    def test_recursive_fun_call_statement(self):
+        interpreter = Interpreter()
+        src = """
+        fun fib(n){
+          if (n <= 1)
+            return n;
+          return fib(n-2) + fib(n-1);
+        }
+        fib(10);
+        """
+        tokens = Scanner(src).scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts) == 2
+        interpreter.visit(stmts[0])
+        assert interpreter.visit(stmts[1]) == 55
+
+    def test_nexted_fun_call_statement(self):
+        src = """
+        fun makeCounter(){
+          var i = 0;
+          fun count(){
+            i = i + 1;
+            print(i);
+          }
+          return count;
+        }
+        var f = makeCounter();
+        f();
+        """
+        interpreter = Interpreter()
+        tokens = Scanner(src).scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts) == 3
+        interpreter.visit(stmts[0])
+        interpreter.visit(stmts[1])
+        interpreter.visit(stmts[2])

@@ -1,5 +1,5 @@
 from typing import cast
-from pox.interpreter import AstPrinter
+from pox.astprint import AstPrinter
 from pox.scanner import Scanner
 from pox.parser import Parser
 from pox.expression import Expr

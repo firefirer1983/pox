@@ -17,10 +17,14 @@ logger = logging.getLogger(__name__)
 def yild_stmt(gen: Generator[Statement, None, None]) -> Statement:
     return next(iter(gen))
 
+
 P = ParamSpec("P")
 R = TypeVar("R")
 
+
 def log_trace(f: Callable[P, R]) -> Callable[P, R]:
+    return f
+
     @wraps(f)
     def _wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         logger.info(f"% {f.__name__}")
@@ -35,7 +39,7 @@ class Parser:
         self.start = self.current = 0
 
     @property
-    def cur(self)-> str:
+    def cur(self) -> str:
         tkn = self.tokens[self.current]
         return f"<{tkn.token_type}({tkn.lexeme})>"
 
@@ -114,7 +118,7 @@ class Parser:
         return Stmt.Var(name, initializer)
 
     @log_trace
-    def func_declaration(self)-> Stmt.Function:
+    def func_declaration(self) -> Stmt.Function:
         name = self.consume(TokenType.IDENTIFIER, "Expect function name")
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after function name")
         arguments = list()
@@ -132,7 +136,6 @@ class Parser:
         block = self.block()
         logger.info(f"@Stmt.Function")
         return Stmt.Function(name.lexeme, [arg.lexeme for arg in arguments], block)
-
 
     @log_trace
     def block(self) -> Stmt.Block:
@@ -157,7 +160,7 @@ class Parser:
         return Stmt.IF(condition, consequent, alternative)
 
     @log_trace
-    def while_stmt(self)-> Stmt.While:
+    def while_stmt(self) -> Stmt.While:
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after while")
         condition = self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after if")
@@ -314,7 +317,7 @@ class Parser:
         return expr
 
     @log_trace
-    def call(self)-> Expression:
+    def call(self) -> Expression:
         expr = self.primary()
         if self.match(TokenType.LEFT_PAREN):
             arguments = list()
@@ -322,7 +325,9 @@ class Parser:
                 arg = self.expression()
                 arguments.append(arg)
                 if not self.match(TokenType.COMMA):
-                    self.consume(TokenType.RIGHT_PAREN, "Expect ')' after function argment list")
+                    self.consume(
+                        TokenType.RIGHT_PAREN, "Expect ')' after function argment list"
+                    )
                     break
             logger.info("@Expr.Call")
             return Expr.Call(expr, arguments)
