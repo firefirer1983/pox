@@ -38,7 +38,6 @@ class TimingFunction(PoxFunction):
     def call(
         self,
         interpreter: Visitor,
-        env: Environment,
         arguments: Optional[list[LiteralTypes]] = None,
     ):
         return time.time()
@@ -46,8 +45,11 @@ class TimingFunction(PoxFunction):
 
 class Interpreter(Visitor):
     def __init__(self):
-        logging.basicConfig(level=logging.INFO)
         global_env.define("time", TimingFunction())
+        self.locals: dict[Expression, int] = dict()
+
+    def resolve(self, locals: dict[Expression, int]):
+        self.locals = {**locals}
 
     @singledispatchmethod
     def visit(

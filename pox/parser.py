@@ -1,3 +1,4 @@
+import logging
 from abc import abstractmethod
 from typing import Callable, cast
 from functools import wraps
@@ -12,6 +13,7 @@ from .statement import Stmt
 
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)
 
 
 def yild_stmt(gen: Generator[Statement, None, None]) -> Statement:

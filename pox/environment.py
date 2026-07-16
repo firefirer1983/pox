@@ -1,10 +1,11 @@
 import logging
-from typing import Any
 from typing import Optional
 
 from .base import LiteralTypes, RunError
 
+
 logger = logging.getLogger(__name__)
+
 
 GLOBAL_LEVEL = 0
 

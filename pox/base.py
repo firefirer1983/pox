@@ -18,6 +18,10 @@ class ParseError(SyntaxError):
     pass
 
 
+class ResolveError(RuntimeError):
+    pass
+
+
 class RunError(RuntimeError):
     pass
 
@@ -29,9 +33,22 @@ class ReturnException(RuntimeError):
     def get_value(self):
         return self.value
 
+
 class Expression(ABC):
     def accept(self, visitor: "Visitor"):
         return visitor.visit(self)
+
+    # def __eq__(self, other) -> bool:
+    #     if type(self) != type(other):
+    #         return False
+    #     if not (hasattr(self, "identify") and hasattr(other, "identify")):
+    #         return False
+    #     a = cast(Token, self.identify)
+    #     b = cast(Token, other.identify)
+    #     return a.lexeme == b.lexeme and a.token_type == b.token_type
+
+    # def __hash__(self) -> int:
+    #     return express_hash(self)
 
 
 class Statement(ABC):

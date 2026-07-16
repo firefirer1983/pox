@@ -1,6 +1,4 @@
-from pox.base import LiteralTypes
-from abc import abstractmethod
-from typing import Optional, Any, cast
+from typing import Optional
 from .base import Statement, Expression
 from .token import Token
 

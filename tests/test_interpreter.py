@@ -232,7 +232,7 @@ class TestInterpretStmt:
         interpreter.visit(stmts[0])
         assert interpreter.visit(stmts[1]) == 55
 
-    def test_nexted_fun_call_statement(self):
+    def test_nested_fun_call_statement(self):
         src = """
         fun makeCounter(){
           var i = 0;
@@ -252,3 +252,23 @@ class TestInterpretStmt:
         interpreter.visit(stmts[0])
         interpreter.visit(stmts[1])
         interpreter.visit(stmts[2])
+
+    def test_nested_fun_multi_call_statement(self):
+        src = """
+        var a = "global";
+        {
+          fun showA() {
+            print a;
+          }
+
+          showA();
+          var a = "block";
+          showA();
+        }
+        """
+        interpreter = Interpreter()
+        tokens = Scanner(src).scan_tokens()
+        stmts = Parser(tokens).parse()
+        assert len(stmts) == 2
+        interpreter.visit(stmts[0])
+        interpreter.visit(stmts[1])

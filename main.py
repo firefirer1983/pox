@@ -1,12 +1,11 @@
 import sys
-from .err import run_error
+from pox.err import run_error
 import logging
 from argparse import ArgumentParser
 
 DEFAULT_NOTIFICATION = "POX 0.0.1 on linux\n"
 
 logger = logging.getLogger(__name__)
-
 
 
 def exec_sript(file_path: str):
