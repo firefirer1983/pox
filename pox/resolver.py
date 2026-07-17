@@ -38,7 +38,7 @@ class Resolver(Visitor):
         return not bool(self.scopes)
 
     def peek(self) -> dict[str, bool]:
-        return self.scopes[0]
+        return self.scopes[-1]
 
     def declare(self, name: str):
         if self.is_empty:
@@ -86,7 +86,8 @@ class Resolver(Visitor):
         self.visit(expr.right)
 
     @visit.register
-    def _(self, expr: Expr.Literal): ...
+    def _(self, expr: Expr.Literal):
+        return expr.value
 
     @visit.register
     def _(self, expr: Expr.Unary):
@@ -99,7 +100,7 @@ class Resolver(Visitor):
     @visit.register
     def _(self, expr: Expr.Variable) -> LiteralTypes:
         if not self.is_empty and not self.peek().get(expr.identify.lexeme):
-            raise ResolveError("Can't read local variable in its own initializer.")
+            raise ResolveError(f"Can't read local variable {expr.identify.lexeme} in its own initializer.")
         self.local_resolve(expr, expr.identify.lexeme)
 
     @visit.register
@@ -163,7 +164,7 @@ class Resolver(Visitor):
         raise ReturnException(self.visit(stmt.value))
 
     def resolve(self, expr: Expression | Statement) -> int:
-        match expr:
+        match type(expr):
             case Stmt.ExprStmt:
                 v = cast(Stmt.ExprStmt, expr)
                 return self.locals[v.expr]
