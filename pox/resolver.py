@@ -99,8 +99,11 @@ class Resolver(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Variable) -> LiteralTypes:
-        if not self.is_empty and not self.peek().get(expr.identify.lexeme):
-            raise ResolveError(f"Can't read local variable {expr.identify.lexeme} in its own initializer.")
+        if self.is_empty:
+            raise ResolveError(f"Symbol {expr.identify.lexeme} resolve failed because empty scopes")
+        scope = self.peek()
+        if expr.identify.lexeme in scope and not scope[expr.identify.lexeme]:
+            raise ResolveError(f"Can't read local variable {expr.identify.lexeme} before initilization.")
         self.local_resolve(expr, expr.identify.lexeme)
 
     @visit.register

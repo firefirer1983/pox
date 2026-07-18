@@ -248,12 +248,12 @@ class TestResolverStmt:
         stmts = _parse(src)
         resolver.visit_many(stmts)
         block = cast(Stmt.Block, stmts[1])
-        # 内层 print a：a 在外层 → depth = 1
+        # 内层 print a：a 在外层 → depth =1
         print_a_in_block = cast(Stmt.PrintStmt, block.statements[1])
         assert resolver.resolve(print_a_in_block.expr) == 1
         # 内层 print b：b 在内层 → depth = 0
         print_b_in_block = cast(Stmt.PrintStmt, block.statements[2])
-        assert resolver.resolve(print_b_in_block.expr) == 1
+        assert resolver.resolve(print_b_in_block.expr) == 0
         # 出块后 print a 仍可访问
         print_a_after = cast(Stmt.PrintStmt, stmts[2])
         assert resolver.resolve(print_a_after.expr) == 0
@@ -312,10 +312,9 @@ class TestResolverStmt:
         assert if_stmt.alternative is not None
         else_block = cast(Stmt.Block, if_stmt.alternative)
         # else 块内访问外层 a → depth = 1
-        print_a = cast(Stmt.PrintStmt, else_block.statements[0])
+        print_a = cast(Stmt.PrintStmt, cast(Stmt.Block, if_stmt.consequent).statements[0])
         assert resolver.resolve(print_a.expr) == 1
-        # else 块内 b 是内层 → depth = 0
-        var_b = cast(Stmt.Var, else_block.statements[0])
+
         print_b = cast(Stmt.PrintStmt, else_block.statements[1])
         assert resolver.resolve(print_b.expr) == 0
 
