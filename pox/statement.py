@@ -1,3 +1,4 @@
+from pox.base import PoxCallable
 from typing import Optional
 from .base import Statement, Expression
 from .token import Token
@@ -54,6 +55,12 @@ class Return(Statement):
         self.value = expr
 
 
+class Class(Statement):
+    def __init__(self, name: str, methods: list[Function]):
+        self.name = name
+        self.methods = methods[:]
+
+
 class Stmt:
     PrintStmt = PrintStmt
     ExprStmt = ExprStmt
@@ -63,3 +70,4 @@ class Stmt:
     While = While
     Function = Function
     Return = Return
+    Class = Class

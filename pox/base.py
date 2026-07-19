@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Optional, Any
 from abc import ABC, abstractmethod
 from functools import singledispatchmethod
 
@@ -9,6 +9,11 @@ class PoxCallable:
 
     @abstractmethod
     def to_str(self) -> str: ...
+
+    @abstractmethod
+    def call(
+        self, interpreter: "Visitor", arguments: Optional[list["LiteralTypes"]]
+    ) -> "LiteralTypes": ...
 
 
 LiteralTypes = bool | str | int | float | None | PoxCallable

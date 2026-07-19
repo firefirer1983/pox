@@ -6,6 +6,10 @@ from pox.expression import Expr
 from pox.statement import Stmt
 
 
+def _parse(src: str):
+    return Parser(Scanner(src).scan_tokens()).parse()
+
+
 class TestAstPrinter:
     def test_parse_literal_expr(self):
         assert (
@@ -132,7 +136,7 @@ class TestAstPrinter:
 
         tokens = Scanner("assert(0)('abc')(nil)(true, a, b)").scan_tokens()
         expr = cast(Expr.Call, Parser(tokens).call())
-        assert len(expr.arguments) == 1
+        assert len(expr.arguments) == 3
 
     def test_parse_func_def_statement(self):
         tokens = Scanner("fun test(){return 0;}").scan_tokens()
@@ -140,3 +144,44 @@ class TestAstPrinter:
         assert stmt.parameters == []
         assert stmt.name == "test"
         assert AstPrinter().visit(stmt) == "fun test(){return 0;}"
+
+    def test_parse_class_def_statement(self):
+        src = """
+        class C{}
+        """
+        stmts = _parse(src)
+        assert len(stmts) == 1
+        stmt = cast(Stmt.Class, stmts[0])
+        assert stmt.name == "C"
+        assert len(stmt.methods) == 0
+
+        src = """
+        class C{
+          test_method(){print 1;}
+          test_method2(){print 2;}
+          test_method3(a, b){print a+b;}
+        }
+        """
+        stmts = _parse(src)
+        assert len(stmts) == 1
+        stmt = cast(Stmt.Class, stmts[0])
+        assert stmt.name == "C"
+        assert len(stmt.methods) == 3
+        func1 = stmt.methods[0]
+        func2 = stmt.methods[1]
+        func3 = stmt.methods[2]
+        assert func1.name == "test_method"
+        assert func2.name == "test_method2"
+        assert func3.name == "test_method3"
+        assert len(func3.parameters) == 2
+
+    def test_parse_attr_get_statement(self):
+
+        src = """
+        a.b.c;
+        """
+        stmts = _parse(src)
+        assert len(stmts) == 1
+        stmt = cast(Stmt.ExprStmt, stmts[0])
+        expr = cast(Expr.GetAttr, stmt.expr)
+        assert expr.attr_name == "c"

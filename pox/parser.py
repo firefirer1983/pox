@@ -1,8 +1,8 @@
+from pox.statement import Function
 import logging
-from abc import abstractmethod
-from typing import Callable, cast
+from typing import Callable
 from functools import wraps
-from typing import Generator, Any
+from typing import Generator
 import logging
 from typing import Callable, TypeVar, ParamSpec
 
@@ -23,9 +23,10 @@ def yild_stmt(gen: Generator[Statement, None, None]) -> Statement:
 P = ParamSpec("P")
 R = TypeVar("R")
 
-
+BYPASS_LOG = True
 def log_trace(f: Callable[P, R]) -> Callable[P, R]:
-    return f
+    if BYPASS_LOG:
+        return f
 
     @wraps(f)
     def _wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -94,7 +95,8 @@ class Parser:
             try:
                 stmt = self.declaration()
             except ParseError as exc:
-                logger.info(f"ParseError: {exc}", exc_info=True)
+                logger.error(f"ParseError: {exc}", exc_info=True)
+                raise
                 self.synchronize()
             else:
                 statements.append(stmt)
@@ -102,12 +104,30 @@ class Parser:
 
     @log_trace
     def declaration(self) -> Statement:
+        if self.match(TokenType.CLASS):
+            return self.class_declaration()
+
         if self.match(TokenType.FUN):
             return self.func_declaration()
 
         if self.match(TokenType.VAR):
             return self.var_declaration()
+
         return self.statement()
+
+    @log_trace
+    def class_declaration(self) -> Statement:
+        name = self.consume(TokenType.IDENTIFIER, "Expect symbol for class name")
+        methods: list[Stmt.Function] = []
+        self.consume(TokenType.LEFT_BRACE, "Expect '{' after class name")
+        while True:
+            if self.match(TokenType.RIGHT_BRACE):
+                break
+            if self.is_end():
+                raise ParseError("Expect '}' after '{'")
+            func = self.func_declaration()
+            methods.append(func)
+        return Stmt.Class(name.lexeme, methods=methods)
 
     @log_trace
     def var_declaration(self) -> Statement:
@@ -250,7 +270,7 @@ class Parser:
     def assignment(self) -> Expression:
         expr = self.or_expr()
         if self.match(TokenType.EQUAL):
-            eq = self.previous()
+            # eq = self.previous()
             value = self.or_expr()
             if isinstance(expr, Expr.Variable):
                 logger.info(f"@Expr.Assign")
@@ -318,21 +338,38 @@ class Parser:
             expr = Expr.Binary(expr, operator, right)
         return expr
 
+    def _call(self, expr)-> Expr.Call:
+        arguments = list()
+        while not self.match(TokenType.RIGHT_PAREN):
+            arg = self.expression()
+            arguments.append(arg)
+            if not self.match(TokenType.COMMA):
+                self.consume(
+                    TokenType.RIGHT_PAREN, "Expect ')' after function argment list"
+                )
+                break
+            logger.info("@Expr.Call")
+        return Expr.Call(expr, arguments)
+
+    def _get_attr(self, expr)-> Expr.GetAttr:
+        attr = self.consume(TokenType.IDENTIFIER, "Expect symbol after '.'")
+        return Expr.GetAttr(expr, attr.lexeme)
+
     @log_trace
     def call(self) -> Expression:
         expr = self.primary()
-        if self.match(TokenType.LEFT_PAREN):
-            arguments = list()
-            while not self.match(TokenType.RIGHT_PAREN):
-                arg = self.expression()
-                arguments.append(arg)
-                if not self.match(TokenType.COMMA):
-                    self.consume(
-                        TokenType.RIGHT_PAREN, "Expect ')' after function argment list"
-                    )
-                    break
-            logger.info("@Expr.Call")
-            return Expr.Call(expr, arguments)
+        while True:
+
+            if self.match(TokenType.DOT):
+                expr = self._get_attr(expr)
+                continue
+
+            if self.match(TokenType.LEFT_PAREN):
+                expr = self._call(expr)
+                continue
+
+            break
+
         return expr
 
     @log_trace

@@ -1,7 +1,7 @@
 import logging
 from ast import literal_eval
 from functools import singledispatchmethod
-from .base import Statement, LiteralTypes, RunError
+from .base import Statement, RunError
 from .token import TokenType
 
 
