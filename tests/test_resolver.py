@@ -443,3 +443,16 @@ class TestResolverStmt:
         # Stmt.Var 不在 resolve 接受的类型里
         with pytest.raises(ResolveError):
             resolver.resolve(var_stmt)
+
+
+    def test_resolve_class(self):
+        src = """
+        class Dog{
+
+        }
+        """
+        resolver = Resolver()
+        stmts = _parse(src)
+        class_stmt = cast(Stmt.Class, stmts[0])
+        resolver.visit_many(stmts)
+        resolver.resolve(class_stmt)

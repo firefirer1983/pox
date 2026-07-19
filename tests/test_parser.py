@@ -192,9 +192,7 @@ class TestAstPrinter:
           eat(){print "eating..";}
         }
         d = Dog();
-        d.eat()
+        d.eat();
         """
         stmts = _parse(src)
         assert len(stmts) == 3
-        class_stmt = cast(Stmt.Class, stmts[0])
-        class_stmt.methods

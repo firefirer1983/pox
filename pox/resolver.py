@@ -1,4 +1,3 @@
-from pox.instance import PoxClass
 import logging
 from typing import cast
 from collections import deque
@@ -84,24 +83,24 @@ class Resolver(Visitor):
         self.current_func_type = encolsing_func_type
 
     @visit.register
-    def _(self, expr: Set.Binary):
+    def _(self, expr: Expr.Binary):
         self.visit(expr.left)
         self.visit(expr.right)
 
     @visit.register
-    def _(self, expr: Set.Literal):
+    def _(self, expr: Expr.Literal):
         return expr.value
 
     @visit.register
-    def _(self, expr: Set.Unary):
+    def _(self, expr: Expr.Unary):
         self.visit(expr.right)
 
     @visit.register
-    def _(self, expr: Set.Grouping) -> LiteralTypes:
+    def _(self, expr: Expr.Grouping) -> LiteralTypes:
         return self.visit(expr.expr)
 
     @visit.register
-    def _(self, expr: Set.Variable) -> LiteralTypes:
+    def _(self, expr: Expr.Variable) -> LiteralTypes:
         if self.is_empty:
             raise ResolveError(
                 f"Symbol {expr.identify.lexeme} resolve failed because empty scopes"
@@ -114,7 +113,7 @@ class Resolver(Visitor):
         self.local_resolve(expr, expr.identify.lexeme)
 
     @visit.register
-    def _(self, expr: Set.Assign) -> LiteralTypes:
+    def _(self, expr: Expr.Assign) -> LiteralTypes:
         self.visit(expr.value)
         self.local_resolve(expr, expr.identify.lexeme)
 
@@ -148,7 +147,7 @@ class Resolver(Visitor):
         self.visit(stmt.alternative)
 
     @visit.register
-    def _(self, expr: Set.Logical):
+    def _(self, expr: Expr.Logical):
         self.visit(expr.left)
         self.visit(expr.right)
 
@@ -158,7 +157,7 @@ class Resolver(Visitor):
         self.visit(stmt.statement)
 
     @visit.register
-    def _(self, expr: Set.Call) -> LiteralTypes:
+    def _(self, expr: Expr.Call) -> LiteralTypes:
         self.visit(expr.expr)
         for arg in expr.arguments:
             self.visit(arg)
@@ -171,7 +170,9 @@ class Resolver(Visitor):
 
     @visit.register
     def _(self, stmt: Stmt.Return):
-        raise ReturnException(self.visit(stmt.value))
+        if self.current_func_type != FunctionType.INITIALIZER:
+            raise ReturnException(self.visit(stmt.value))
+        raise ReturnException(None)
 
     @visit.register
     def _(self, stmt: Stmt.Class):
@@ -184,12 +185,21 @@ class Resolver(Visitor):
             scope = self.peek()
             scope["this"] = True
             for method in stmt.methods:
-                self.function_resolve(method, FunctionType.METHOD)
+                func_type = FunctionType.METHOD
+                if method.name == "init":
+                    func_type = FunctionType.INITIALIZER
+                self.function_resolve(method, func_type)
         self.current_class_type = enclosingClass
 
     @visit.register
     def _(self, expr: Expr.Get):
         self.visit(expr.expr)
+
+    @visit.register
+    def _(self, expr: Expr.Set):
+        # 由于属性名称动态添加，因此无法在resolver做resolve
+        self.visit(expr.expr)
+        self.visit(expr.value)
 
     def resolve(self, expr: Expression | Statement) -> int:
         match type(expr):

@@ -1,3 +1,4 @@
+from pox.instance import PoxClass
 import sys
 import logging
 import time
@@ -185,3 +186,10 @@ class Interpreter(Visitor):
     @visit.register
     def _(self, stmt: Stmt.Return, env: Environment = global_env):
         raise ReturnException(self.visit(stmt.value, env))
+
+    @visit.register
+    def _(self, stmt: Stmt.Class, env: Environment = global_env):
+        env.define(stmt.name, None)
+        methods = [PoxFunction(m, env) for m in stmt.methods]
+        cls = PoxClass(stmt.name, methods)
+        env.assign(stmt.name, cls)

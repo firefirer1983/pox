@@ -26,7 +26,7 @@ class Environment:
             return self.enclosing.get(name)
         raise RunError(f"Variable get {name} not found!")
 
-    def assign(self, name: str, value: LiteralTypes):
+    def assign(self, name: str, value: Any):
         if name in self.vars:
             logger.info(f"EnvAssign({self.level}): {name} = {self.vars[name]}")
             self.vars[name] = value
