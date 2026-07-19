@@ -24,6 +24,8 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 BYPASS_LOG = True
+
+
 def log_trace(f: Callable[P, R]) -> Callable[P, R]:
     if BYPASS_LOG:
         return f
@@ -338,7 +340,7 @@ class Parser:
             expr = Expr.Binary(expr, operator, right)
         return expr
 
-    def _call(self, expr)-> Expr.Call:
+    def _call(self, expr) -> Expr.Call:
         arguments = list()
         while not self.match(TokenType.RIGHT_PAREN):
             arg = self.expression()
@@ -351,21 +353,17 @@ class Parser:
             logger.info("@Expr.Call")
         return Expr.Call(expr, arguments)
 
-    def _get_attr(self, expr)-> Expr.GetAttr:
-        attr = self.consume(TokenType.IDENTIFIER, "Expect symbol after '.'")
-        return Expr.GetAttr(expr, attr.lexeme)
-
     @log_trace
     def call(self) -> Expression:
         expr = self.primary()
         while True:
-
-            if self.match(TokenType.DOT):
-                expr = self._get_attr(expr)
-                continue
-
             if self.match(TokenType.LEFT_PAREN):
                 expr = self._call(expr)
+                continue
+
+            if self.match(TokenType.DOT):
+                attr = self.consume(TokenType.IDENTIFIER, "Expect symbol after '.'")
+                expr = Expr.GetAttr(expr, attr.lexeme)
                 continue
 
             break
