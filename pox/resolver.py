@@ -1,3 +1,4 @@
+from pox.instance import PoxClass
 import logging
 from typing import cast
 from collections import deque
@@ -15,6 +16,7 @@ from .base import (
     Expression,
     LiteralTypes,
 )
+from .instance import ClassTye
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,7 @@ class Resolver(Visitor):
         self.scopes.append(dict())
         self.locals: dict[Expression, int] = dict()
         self.current_func_type = FunctionType.NONE
+        self.current_class_type = ClassTye.NONE
 
     @contextmanager
     def scoping(self):
@@ -81,33 +84,37 @@ class Resolver(Visitor):
         self.current_func_type = encolsing_func_type
 
     @visit.register
-    def _(self, expr: Expr.Binary):
+    def _(self, expr: Set.Binary):
         self.visit(expr.left)
         self.visit(expr.right)
 
     @visit.register
-    def _(self, expr: Expr.Literal):
+    def _(self, expr: Set.Literal):
         return expr.value
 
     @visit.register
-    def _(self, expr: Expr.Unary):
+    def _(self, expr: Set.Unary):
         self.visit(expr.right)
 
     @visit.register
-    def _(self, expr: Expr.Grouping) -> LiteralTypes:
+    def _(self, expr: Set.Grouping) -> LiteralTypes:
         return self.visit(expr.expr)
 
     @visit.register
-    def _(self, expr: Expr.Variable) -> LiteralTypes:
+    def _(self, expr: Set.Variable) -> LiteralTypes:
         if self.is_empty:
-            raise ResolveError(f"Symbol {expr.identify.lexeme} resolve failed because empty scopes")
+            raise ResolveError(
+                f"Symbol {expr.identify.lexeme} resolve failed because empty scopes"
+            )
         scope = self.peek()
         if expr.identify.lexeme in scope and not scope[expr.identify.lexeme]:
-            raise ResolveError(f"Can't read local variable {expr.identify.lexeme} before initilization.")
+            raise ResolveError(
+                f"Can't read local variable {expr.identify.lexeme} before initilization."
+            )
         self.local_resolve(expr, expr.identify.lexeme)
 
     @visit.register
-    def _(self, expr: Expr.Assign) -> LiteralTypes:
+    def _(self, expr: Set.Assign) -> LiteralTypes:
         self.visit(expr.value)
         self.local_resolve(expr, expr.identify.lexeme)
 
@@ -141,7 +148,7 @@ class Resolver(Visitor):
         self.visit(stmt.alternative)
 
     @visit.register
-    def _(self, expr: Expr.Logical):
+    def _(self, expr: Set.Logical):
         self.visit(expr.left)
         self.visit(expr.right)
 
@@ -151,7 +158,7 @@ class Resolver(Visitor):
         self.visit(stmt.statement)
 
     @visit.register
-    def _(self, expr: Expr.Call) -> LiteralTypes:
+    def _(self, expr: Set.Call) -> LiteralTypes:
         self.visit(expr.expr)
         for arg in expr.arguments:
             self.visit(arg)
@@ -166,12 +173,38 @@ class Resolver(Visitor):
     def _(self, stmt: Stmt.Return):
         raise ReturnException(self.visit(stmt.value))
 
+    @visit.register
+    def _(self, stmt: Stmt.Class):
+        enclosingClass = self.current_class_type
+        self.current_class_type = ClassTye.CLASS
+
+        self.declare(stmt.name)
+        self.define(stmt.name)
+        with self.scoping():
+            scope = self.peek()
+            scope["this"] = True
+            for method in stmt.methods:
+                self.function_resolve(method, FunctionType.METHOD)
+        self.current_class_type = enclosingClass
+
+    @visit.register
+    def _(self, expr: Expr.Get):
+        self.visit(expr.expr)
+
     def resolve(self, expr: Expression | Statement) -> int:
         match type(expr):
             case Stmt.ExprStmt:
                 v = cast(Stmt.ExprStmt, expr)
                 return self.locals[v.expr]
-            case Expr.Assign | Expr.Binary | Expr.Call | Expr.Grouping | Expr.Logical | Expr.Unary | Expr.Variable:
+            case (
+                Expr.Assign
+                | Expr.Binary
+                | Expr.Call
+                | Expr.Grouping
+                | Expr.Logical
+                | Expr.Unary
+                | Expr.Variable
+            ):
                 v = cast(Expression, expr)
                 return self.locals[v]
             case _:

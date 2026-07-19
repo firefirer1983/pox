@@ -5,7 +5,7 @@ from .base import Statement, RunError
 from .token import TokenType
 
 
-from .expression import Expr
+from .expression import Set
 from .statement import Stmt
 from .base import (
     Visitor,
@@ -28,17 +28,17 @@ class AstPrinter(Visitor):
             return value
 
     @visit.register
-    def _(self, expr: Expr.Binary) -> str:
+    def _(self, expr: Set.Binary) -> str:
         return (
             f"({self.visit(expr.left)}{expr.operator.lexeme}{self.visit(expr.right)})"
         )
 
     @visit.register
-    def _(self, expr: Expr.Literal) -> str:
+    def _(self, expr: Set.Literal) -> str:
         return self.eval(str(expr.value))
 
     @visit.register
-    def _(self, expr: Expr.Unary) -> str:
+    def _(self, expr: Set.Unary) -> str:
         right = self.visit(expr.right)
         match expr.operator.token_type:
             case TokenType.MINUS:
@@ -52,15 +52,15 @@ class AstPrinter(Visitor):
         return str(result)
 
     @visit.register
-    def _(self, expr: Expr.Grouping) -> str:
+    def _(self, expr: Set.Grouping) -> str:
         return f"({self.visit(expr.expr)})"
 
     @visit.register
-    def _(self, expr: Expr.Variable) -> str:
+    def _(self, expr: Set.Variable) -> str:
         return f"{expr.identify.lexeme}"
 
     @visit.register
-    def _(self, expr: Expr.Assign) -> str:
+    def _(self, expr: Set.Assign) -> str:
         return f"{expr.identify.lexeme}={self.visit(expr.value)}"
 
     @visit.register
@@ -94,7 +94,7 @@ class AstPrinter(Visitor):
         return result
 
     @visit.register
-    def _(self, expr: Expr.Logical) -> str:
+    def _(self, expr: Set.Logical) -> str:
         return (
             f"({self.visit(expr.left)} {expr.operator.lexeme} {self.visit(expr.right)})"
         )
@@ -104,7 +104,7 @@ class AstPrinter(Visitor):
         return f"while({self.visit(stmt.condition)}){self.visit(stmt.statement)}"
 
     @visit.register
-    def _(self, expr: Expr.Call) -> str:
+    def _(self, expr: Set.Call) -> str:
         result = f"{self.visit(expr.expr)}("
         for i, arg in enumerate(expr.arguments):
             result += f"{self.visit(arg)}"

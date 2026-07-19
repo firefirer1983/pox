@@ -1,14 +1,12 @@
-from pox.statement import Function
-import logging
-from typing import Callable
-from functools import wraps
-from typing import Generator
 import logging
 from typing import Callable, TypeVar, ParamSpec
+from functools import wraps
+from typing import Generator
+
 
 from .token import Token, TokenType
 from .base import ParseError, Expression, Statement
-from .expression import Expr
+from .expression import Set
 from .statement import Stmt
 
 
@@ -195,7 +193,7 @@ class Parser:
     @log_trace
     def return_stmt(self) -> Stmt.Return:
         if self.match(TokenType.SEMICOLON):
-            return Stmt.Return(Expr.Literal(None))
+            return Stmt.Return(Set.Literal(None))
 
         expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' end of return")
@@ -212,7 +210,7 @@ class Parser:
             initializer = Stmt.ExprStmt(self.expression())
             self.consume(TokenType.SEMICOLON, "Exprect ';' after initialier")
 
-        cond = Expr.Literal(True)
+        cond = Set.Literal(True)
         if not self.check(TokenType.SEMICOLON):
             cond = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after for")
@@ -274,9 +272,9 @@ class Parser:
         if self.match(TokenType.EQUAL):
             # eq = self.previous()
             value = self.or_expr()
-            if isinstance(expr, Expr.Variable):
+            if isinstance(expr, Set.Variable):
                 logger.info(f"@Expr.Assign")
-                return Expr.Assign(expr.identify, value)
+                return Set.Assign(expr.identify, value)
         return expr
 
     @log_trace
@@ -286,7 +284,7 @@ class Parser:
             token = self.previous()
             right = self.and_expr()
             logger.info(f"@Expr.Logical")
-            return Expr.Logical(left, token, right)
+            return Set.Logical(left, token, right)
         return left
 
     @log_trace
@@ -296,7 +294,7 @@ class Parser:
             token = self.previous()
             right = self.or_expr()
             logger.info(f"@Expr.Logical")
-            return Expr.Logical(left, token, right)
+            return Set.Logical(left, token, right)
         return left
 
     @log_trace
@@ -304,7 +302,7 @@ class Parser:
         expr = self.comparision()
         while self.match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL):
             right = self.comparision()
-            expr = Expr.Binary(expr, self.previous(), right)
+            expr = Set.Binary(expr, self.previous(), right)
         return expr
 
     @log_trace
@@ -318,7 +316,7 @@ class Parser:
         ):
             operator = self.previous()
             right = self.term()
-            expr = Expr.Binary(expr, operator, right)
+            expr = Set.Binary(expr, operator, right)
 
         return expr
 
@@ -328,7 +326,7 @@ class Parser:
         while self.match(TokenType.PLUS, TokenType.MINUS):
             operator = self.previous()
             right = self.factor()
-            expr = Expr.Binary(expr, operator, right)
+            expr = Set.Binary(expr, operator, right)
         return expr
 
     @log_trace
@@ -337,10 +335,10 @@ class Parser:
         while self.match(TokenType.STAR, TokenType.SLASH):
             operator = self.previous()
             right = self.unary()
-            expr = Expr.Binary(expr, operator, right)
+            expr = Set.Binary(expr, operator, right)
         return expr
 
-    def _call(self, expr) -> Expr.Call:
+    def _call(self, expr) -> Set.Call:
         arguments = list()
         while not self.match(TokenType.RIGHT_PAREN):
             arg = self.expression()
@@ -351,7 +349,7 @@ class Parser:
                 )
                 break
             logger.info("@Expr.Call")
-        return Expr.Call(expr, arguments)
+        return Set.Call(expr, arguments)
 
     @log_trace
     def call(self) -> Expression:
@@ -363,7 +361,7 @@ class Parser:
 
             if self.match(TokenType.DOT):
                 attr = self.consume(TokenType.IDENTIFIER, "Expect symbol after '.'")
-                expr = Expr.GetAttr(expr, attr.lexeme)
+                expr = Get(expr, attr.lexeme)
                 continue
 
             break
@@ -374,40 +372,40 @@ class Parser:
     def unary(self) -> Expression:
         if self.match(TokenType.MINUS, TokenType.BANG):
             logger.info("@Expr.Unary")
-            return Expr.Unary(self.previous(), self.unary())
+            return Set.Unary(self.previous(), self.unary())
         return self.call()
 
     @log_trace
     def primary(self) -> Expression:
         if self.match(TokenType.TRUE):
             logger.info("@Literal<true>")
-            return Expr.Literal(True)
+            return Set.Literal(True)
 
         if self.match(TokenType.FALSE):
             logger.info("@Literal<false>")
-            return Expr.Literal(False)
+            return Set.Literal(False)
 
         if self.match(TokenType.NIL):
             logger.info("@Literal<nil>")
-            return Expr.Literal(None)
+            return Set.Literal(None)
 
         if self.match(TokenType.NUMBER):
             logger.info("@Literal<number>")
-            return Expr.Literal(self.previous().literal)
+            return Set.Literal(self.previous().literal)
 
         if self.match(TokenType.STRING):
             logger.info("@Literal<string>")
-            return Expr.Literal(self.previous().literal)
+            return Set.Literal(self.previous().literal)
 
         if self.match(TokenType.LEFT_PAREN):
             expr = self.expression()
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expressoin")
             logger.info("@Grouping")
-            return Expr.Grouping(expr)
+            return Set.Grouping(expr)
 
         if self.match(TokenType.IDENTIFIER):
             logger.info("@Var")
-            return Expr.Variable(self.previous())
+            return Set.Variable(self.previous())
 
         raise ParseError(f"Error Token: '{self.peek().lexeme}'")
 

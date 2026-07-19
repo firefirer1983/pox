@@ -1,3 +1,4 @@
+from typing import Any
 from .base import Expression, LiteralTypes
 from .token import Token
 
@@ -58,11 +59,16 @@ class Call(Expression):
         self.arguments = arguments
 
 
-class GetAttr(Expression):
-    def __init__(self, expr: Expression, attr_name: str):
+class Get(Expression):
+    def __init__(self, expr: Expression, name: str):
         self.expr = expr
-        self.attr_name = attr_name
+        self.name = name
 
+class Set(Expression):
+    def __init__(self, expr: Expression, name: str, value: Any):
+        self.expr = expr
+        self.name = name
+        self.value = value
 
 class Expr:
     Binary = Binary
@@ -73,4 +79,5 @@ class Expr:
     Assign = Assign
     Logical = Logical
     Call = Call
-    GetAttr = GetAttr
+    Get = Get
+    Set = Set

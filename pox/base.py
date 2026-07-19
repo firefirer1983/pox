@@ -3,6 +3,9 @@ from abc import ABC, abstractmethod
 from functools import singledispatchmethod
 
 
+LiteralTypes = bool | str | int | float | None
+
+
 class PoxCallable:
     @abstractmethod
     def arity(self) -> int: ...
@@ -12,11 +15,8 @@ class PoxCallable:
 
     @abstractmethod
     def call(
-        self, interpreter: "Visitor", arguments: Optional[list["LiteralTypes"]]
-    ) -> "LiteralTypes": ...
-
-
-LiteralTypes = bool | str | int | float | None | PoxCallable
+        self, interpreter: "Visitor", arguments: Optional[list[Any]]
+    ) -> Any: ...
 
 
 class ParseError(SyntaxError):

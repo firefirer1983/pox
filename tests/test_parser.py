@@ -183,5 +183,18 @@ class TestAstPrinter:
         stmts = _parse(src)
         assert len(stmts) == 1
         stmt = cast(Stmt.ExprStmt, stmts[0])
-        expr = cast(Expr.GetAttr, stmt.expr)
-        assert expr.attr_name == "c"
+        expr = cast(Expr.Get, stmt.expr)
+        assert expr.name == "c"
+
+    def test_parse_instance(self):
+        src = """
+        class Dog{
+          eat(){print "eating..";}
+        }
+        d = Dog();
+        d.eat()
+        """
+        stmts = _parse(src)
+        assert len(stmts) == 3
+        class_stmt = cast(Stmt.Class, stmts[0])
+        class_stmt.methods

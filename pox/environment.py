@@ -1,8 +1,7 @@
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 from .base import LiteralTypes, RunError
-
 
 logger = logging.getLogger(__name__)
 
@@ -13,13 +12,13 @@ GLOBAL_LEVEL = 0
 class Environment:
     def __init__(self, enclosing: Optional["Environment"] = None):
         self.enclosing = enclosing
-        self.vars: dict[str, LiteralTypes] = dict()
+        self.vars: dict[str, Any] = dict()
 
-    def define(self, name: str, value: LiteralTypes):
+    def define(self, name: str, value: Any):
         logger.info(f"var {name} = {value}")
         self.vars[name] = value
 
-    def get(self, name: str) -> LiteralTypes:
+    def get(self, name: str) -> Any:
         if name in self.vars:
             logger.info(f"EnvGet({self.level}): {name} = {self.vars[name]}")
             return self.vars[name]
