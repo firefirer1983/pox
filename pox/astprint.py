@@ -1,5 +1,9 @@
+import logging
+from ast import literal_eval
 from functools import singledispatchmethod
-from .base import Statement
+from .base import Statement, LiteralTypes, RunError
+from .token import TokenType
+
 
 from .expression import Expr
 from .statement import Stmt
@@ -8,11 +12,20 @@ from .base import (
     Expression,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class AstPrinter(Visitor):
     @singledispatchmethod
     def visit(self, expr: Expression | Statement) -> str:
         raise NotImplementedError(type(expr))
+
+    def eval(self, value: str) -> str:
+        logger.info(f"eval({value})")
+        try:
+            return str(literal_eval(value))
+        except ValueError:
+            return value
 
     @visit.register
     def _(self, expr: Expr.Binary) -> str:
@@ -22,11 +35,21 @@ class AstPrinter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Literal) -> str:
-        return f"{expr.value}"
+        return self.eval(str(expr.value))
 
     @visit.register
     def _(self, expr: Expr.Unary) -> str:
-        return f"{expr.operator.lexeme}{self.visit(expr.right)}"
+        right = self.visit(expr.right)
+        match expr.operator.token_type:
+            case TokenType.MINUS:
+                result = -1 * literal_eval(right)
+            case TokenType.PLUS:
+                result = self.visit(right)
+            case TokenType.BANG:
+                result = not literal_eval(right)
+            case _:
+                RunError(f"Syntax error: {expr.operator.lexeme}{right}")
+        return str(result)
 
     @visit.register
     def _(self, expr: Expr.Grouping) -> str:
