@@ -44,7 +44,7 @@ class While(Statement):
 
 
 class Function(Statement):
-    def __init__(self, name: str, arguments: list[str], block: Block):
+    def __init__(self, name: Token, arguments: list[Token], block: Block):
         self.name = name
         self.parameters = arguments[:]
         self.block = block
@@ -56,7 +56,7 @@ class Return(Statement):
 
 
 class Class(Statement):
-    def __init__(self, name: str, methods: list[Function]):
+    def __init__(self, name: Token, methods: list[Function]):
         self.name = name
         self.methods = methods[:]
 

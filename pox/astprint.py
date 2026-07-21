@@ -115,7 +115,8 @@ class AstPrinter(Visitor):
 
     @visit.register
     def _(self, stmt: Stmt.Function) -> str:
-        result = f"fun {stmt.name}({','.join(stmt.parameters)})"
+        parameters = [param.lexeme for param in stmt.parameters]
+        result = f"fun {stmt.name.lexeme}({','.join(parameters)})"
         result += f"{self.visit(stmt.block)}"
         return result
 

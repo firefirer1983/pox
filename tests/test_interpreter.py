@@ -1,11 +1,13 @@
 import time
 from typing import cast
+from pox.token import Token, TokenType
 from pox.callables import PoxFunction
 from pox.environment import global_env
 from pox.interpreter import Interpreter
 from pox.parser import Parser
 from pox.scanner import Scanner
 from pox.statement import Stmt
+
 
 class TestInterpretExpr:
     def test_parse_literal_expr(self):
@@ -47,6 +49,10 @@ class TestInterpretExpr:
         )
 
 
+token_a = Token("a", TokenType.STRING, "a", 0)
+token_test = Token("test", TokenType.VAR, "test", 0)
+
+
 class TestInterpretStmt:
     def test_unary_expr(self):
         interpreter = Interpreter()
@@ -62,7 +68,7 @@ class TestInterpretStmt:
         stmts = Parser(Scanner("var a;").scan_tokens()).parse()
         assert len(stmts) == 1
         interpreter.visit(stmts[0])
-        assert global_env.get("a") == None
+        assert global_env.get(token_a) == None
 
     def test_print_statement(self):
         interpreter = Interpreter()
@@ -75,63 +81,63 @@ class TestInterpretStmt:
         interpreter = Interpreter()
         for stmt in Parser(Scanner("var a = 5;").scan_tokens()).parse():
             interpreter.visit(stmt)
-            assert global_env.get("a") == 5
+            assert global_env.get(token_a) == 5
 
     def test_var_mix_statements(self):
         interpreter = Interpreter()
         tokens = Scanner("var a;a=5;a=a*3;").scan_tokens()
         stmts = Parser(tokens).parse()
         interpreter.visit(stmts[0])
-        assert global_env.get("a") == None
+        assert global_env.get(token_a) == None
         interpreter.visit(stmts[1])
-        assert global_env.get("a") == 5
+        assert global_env.get(token_a) == 5
         interpreter.visit(stmts[2])
-        assert global_env.get("a") == 15
+        assert global_env.get(token_a) == 15
 
     def test_block_1_statement(self):
         interpreter = Interpreter()
         stmts = Parser(Scanner("var a;{a=5;}").scan_tokens()).parse()
         interpreter.visit(stmts[0])
-        assert global_env.get("a") == None
+        assert global_env.get(token_a) == None
         interpreter.visit(stmts[1])
-        assert global_env.get("a") == 5
+        assert global_env.get(token_a) == 5
 
     def test_block_multi_statement(self):
         interpreter = Interpreter()
         stmts = Parser(Scanner("var a;{a=5;a=a*3;}").scan_tokens()).parse()
         assert len(stmts) == 2
         interpreter.visit(stmts[0])
-        assert global_env.get("a") == None
+        assert global_env.get(token_a) == None
         interpreter.visit(stmts[1])
-        assert global_env.get("a") == 15
+        assert global_env.get(token_a) == 15
 
     def test_nested_block(self):
         interpreter = Interpreter()
         tokens = Scanner("var a=5;{a=3;{a=2;}}").scan_tokens()
         stmts = Parser(tokens).parse()
-        assert len(stmts)== 2
+        assert len(stmts) == 2
         interpreter.visit(stmts[0])
-        assert global_env.get("a") == 5
+        assert global_env.get(token_a) == 5
         interpreter.visit(stmts[1])
-        assert global_env.get("a") == 2
+        assert global_env.get(token_a) == 2
 
     def test_if_statement(self):
         interpreter = Interpreter()
         tokens = Scanner("var a=1;if (true){a=3;}else{a=4;}").scan_tokens()
         stmts = Parser(tokens).parse()
-        assert len(stmts)== 2
+        assert len(stmts) == 2
         interpreter.visit(stmts[0])
         interpreter.visit(stmts[1])
-        assert global_env.get("a") == 3
+        assert global_env.get(token_a) == 3
 
     def test_else_statement(self):
         interpreter = Interpreter()
         tokens = Scanner("var a=1;if (false){a=3;}else{a=4;}").scan_tokens()
         stmts = Parser(tokens).parse()
-        assert len(stmts)== 2
+        assert len(stmts) == 2
         interpreter.visit(stmts[0])
         interpreter.visit(stmts[1])
-        assert global_env.get("a") == 4
+        assert global_env.get(token_a) == 4
 
     def test_logical_expr(self):
         interpreter = Interpreter()
@@ -156,7 +162,7 @@ class TestInterpretStmt:
         stmts = Parser(tokens).parse()
         assert len(stmts) == 1
         interpreter.visit(stmts[0])
-        assert global_env.get("a") == True
+        assert global_env.get(token_a) == True
 
     def test_nested_or_expr(self):
         interpreter = Interpreter()
@@ -191,9 +197,9 @@ class TestInterpretStmt:
         stmts = Parser(tokens).parse()
         assert len(stmts) == 1
         interpreter.visit(stmts[0])
-        testfunc = cast(PoxFunction, global_env.get("test"))
+        testfunc = cast(PoxFunction, global_env.get(token_test))
         assert testfunc.arity() == 3
-        assert testfunc.parameters[0] == "a"
+        assert testfunc.parameters[0] == token_a
         assert testfunc.parameters[1] == "b"
         assert testfunc.parameters[2] == "c"
         assert len(testfunc.block.statements) == 1

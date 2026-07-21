@@ -1,3 +1,4 @@
+from pox.token import Token
 import logging
 from typing import cast
 from collections import deque
@@ -9,13 +10,13 @@ from .base import Statement, ReturnException, ResolveError
 
 from .expression import Expr
 from .statement import Stmt
-from .callables import FunctionType
+from .callables import FunctionType, ClassTye
 from .base import (
     Visitor,
     Expression,
     LiteralTypes,
 )
-from .instance import ClassTye
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,20 +43,20 @@ class Resolver(Visitor):
     def peek(self) -> dict[str, bool]:
         return self.scopes[-1]
 
-    def declare(self, name: str):
+    def declare(self, name: Token):
         if self.is_empty:
-            raise ResolveError(f"Scope Empty!")
+            raise ResolveError(f"Resole {name.lexeme} at line: {name.line} Scope Empty!")
 
         scope = self.peek()
-        if name in scope:
-            raise ResolveError(f"{name} is already exists")
-        scope[name] = False
+        if name.lexeme in scope:
+            raise ResolveError(f"{name.lexeme} line: {name.line} is already exists")
+        scope[name.lexeme] = False
 
-    def define(self, name: str):
+    def define(self, name: Token):
         if self.is_empty:
-            raise ResolveError(f"Scope Empty!")
+            raise ResolveError(f"Resolve {name.lexeme} at line: {name.line} Scope Empty!")
         scope = self.peek()
-        scope[name] = True
+        scope[name.lexeme] = True
 
     def visit_many(self, stmts: list[Statement]):
         for stmt in stmts:
@@ -127,10 +128,10 @@ class Resolver(Visitor):
 
     @visit.register
     def _(self, stmt: Stmt.Var):
-        self.declare(stmt.name.lexeme)
+        self.declare(stmt.name)
         if stmt.initializer:
             self.visit(stmt.initializer)
-        self.define(stmt.name.lexeme)
+        self.define(stmt.name)
 
     @visit.register
     def _(self, stmt: Stmt.Block):
@@ -186,19 +187,19 @@ class Resolver(Visitor):
             scope["this"] = True
             for method in stmt.methods:
                 func_type = FunctionType.METHOD
-                if method.name == "init":
+                if method.name.lexeme == "init":
                     func_type = FunctionType.INITIALIZER
                 self.function_resolve(method, func_type)
         self.current_class_type = enclosingClass
 
     @visit.register
     def _(self, expr: Expr.Get):
-        self.visit(expr.expr)
+        self.visit(expr.obj)
 
     @visit.register
     def _(self, expr: Expr.Set):
         # 由于属性名称动态添加，因此无法在resolver做resolve
-        self.visit(expr.expr)
+        self.visit(expr.obj)
         self.visit(expr.value)
 
     def resolve(self, expr: Expression | Statement) -> int:
@@ -218,4 +219,5 @@ class Resolver(Visitor):
                 v = cast(Expression, expr)
                 return self.locals[v]
             case _:
-                raise ResolveError(f"{expr} is not resolvable")
+
+                raise ResolveError(f"{expr}: {type(expr)}is not resolvable")

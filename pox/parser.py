@@ -127,7 +127,7 @@ class Parser:
                 raise ParseError("Expect '}' after '{'")
             func = self.func_declaration()
             methods.append(func)
-        return Stmt.Class(name.lexeme, methods=methods)
+        return Stmt.Class(name, methods=methods)
 
     @log_trace
     def var_declaration(self) -> Statement:
@@ -275,6 +275,9 @@ class Parser:
             if isinstance(expr, Expr.Variable):
                 logger.info(f"@Expr.Assign")
                 return Expr.Assign(expr.identify, value)
+            elif isinstance(expr, Expr.Get):
+                logger.info(f"@Expr.Set")
+                return Expr.Set(expr.obj, expr.name, value)
         return expr
 
     @log_trace
@@ -389,6 +392,10 @@ class Parser:
             logger.info("@Literal<nil>")
             return Expr.Literal(None)
 
+        if self.match(TokenType.THIS):
+            logger.info("@Expr.<This>")
+            return Expr.This(self.previous())
+
         if self.match(TokenType.NUMBER):
             logger.info("@Literal<number>")
             return Expr.Literal(self.previous().literal)
@@ -406,6 +413,7 @@ class Parser:
         if self.match(TokenType.IDENTIFIER):
             logger.info("@Var")
             return Expr.Variable(self.previous())
+
 
         raise ParseError(f"Error Token: '{self.peek().lexeme}'")
 

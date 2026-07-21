@@ -1,15 +1,14 @@
-from pox.instance import PoxClass
 import sys
 import logging
 import time
-from typing import cast, Optional
+from typing import cast, Optional, Any
 
 from functools import singledispatchmethod
-from .token import TokenType
+from .token import TokenType, Token
 from .environment import Environment, global_env
 from .base import Statement, ReturnException
 
-from .callables import PoxFunction
+from .callables import PoxFunction, PoxClass
 from .expression import Expr
 from .statement import Stmt
 from .base import (
@@ -51,6 +50,14 @@ class Interpreter(Visitor):
 
     def resolve(self, locals: dict[Expression, int]):
         self.locals = {**locals}
+
+    def lookup_variable(self, name: Token, expr: Expression, env: Environment) -> Any:
+        distance = self.locals.get(expr)
+        if distance is None:
+            if name.lexeme not in global_env.vars:
+                raise RunError(f"Cant find {name.lexeme} at line: {name.line}")
+            return global_env.vars[name.lexeme]
+        return env.get_at(name, distance)
 
     @singledispatchmethod
     def visit(
@@ -117,11 +124,11 @@ class Interpreter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Variable, env: Environment = global_env) -> LiteralTypes:
-        return env.get(expr.identify.lexeme)
+        return env.get(expr.identify)
 
     @visit.register
     def _(self, expr: Expr.Assign, env: Environment = global_env) -> LiteralTypes:
-        env.assign(expr.identify.lexeme, self.visit(expr.value, env))
+        env.assign(expr.identify, self.visit(expr.value, env))
 
     @visit.register
     def _(self, stmt: Stmt.PrintStmt, env: Environment = global_env):

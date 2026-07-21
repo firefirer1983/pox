@@ -1,17 +1,12 @@
-import time
+import pytest
 from typing import cast
 
-import pytest
-
-from pox.base import ResolveError, ReturnException
-from pox.callables import PoxFunction
-from pox.environment import global_env
 from pox.expression import Expr
-from pox.interpreter import Interpreter
 from pox.resolver import Resolver
 from pox.parser import Parser
 from pox.scanner import Scanner
 from pox.statement import Stmt
+from pox.base import ResolveError, ReturnException
 
 
 def _parse(src: str):
@@ -312,7 +307,9 @@ class TestResolverStmt:
         assert if_stmt.alternative is not None
         else_block = cast(Stmt.Block, if_stmt.alternative)
         # else 块内访问外层 a → depth = 1
-        print_a = cast(Stmt.PrintStmt, cast(Stmt.Block, if_stmt.consequent).statements[0])
+        print_a = cast(
+            Stmt.PrintStmt, cast(Stmt.Block, if_stmt.consequent).statements[0]
+        )
         assert resolver.resolve(print_a.expr) == 1
 
         print_b = cast(Stmt.PrintStmt, else_block.statements[1])
@@ -444,15 +441,16 @@ class TestResolverStmt:
         with pytest.raises(ResolveError):
             resolver.resolve(var_stmt)
 
-
     def test_resolve_class(self):
         src = """
         class Dog{
 
         }
+        var d = Dog();
         """
         resolver = Resolver()
         stmts = _parse(src)
-        class_stmt = cast(Stmt.Class, stmts[0])
         resolver.visit_many(stmts)
-        resolver.resolve(class_stmt)
+        var_stmt = cast(Stmt.Var, stmts[1])
+        assert var_stmt.initializer
+        resolver.resolve(var_stmt.initializer)

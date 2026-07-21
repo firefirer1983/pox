@@ -60,15 +60,22 @@ class Call(Expression):
 
 
 class Get(Expression):
-    def __init__(self, expr: Expression, name: str):
-        self.expr = expr
+    def __init__(self, obj: Expression, name: str):
+        self.obj = obj
         self.name = name
 
+
 class Set(Expression):
-    def __init__(self, expr: Expression, name: str, value: Any):
-        self.expr = expr
+    def __init__(self, obj: Expression, name: str, value: Any):
+        self.obj = obj
         self.name = name
         self.value = value
+
+
+class This(Expression):
+    def __init__(self, keyword: Token):
+        self.keyword = keyword
+
 
 class Expr:
     Binary = Binary
@@ -81,3 +88,4 @@ class Expr:
     Call = Call
     Get = Get
     Set = Set
+    This = This
