@@ -50,7 +50,7 @@ class PoxFunction(PoxCallable):
             interpreter.visit(self.block, env)
         except ReturnException as exc:
             if self.initializer:
-                return self.closure.get("this")
+                return self.closure.vars["this"]
             return exc.get_value()
         assert False, "Not reachable"
 
@@ -64,7 +64,7 @@ class PoxFunction(PoxCallable):
         return self.stmt.block
 
     @property
-    def parameters(self) -> list[str]:
+    def parameters(self) -> list[Token]:
         return self.stmt.parameters
 
 

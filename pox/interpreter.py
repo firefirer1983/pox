@@ -45,7 +45,7 @@ class TimingFunction(PoxFunction):
 
 class Interpreter(Visitor):
     def __init__(self):
-        global_env.define("time", TimingFunction())
+        global_env.define(Token("time", TokenType.VAR, "time", 0), TimingFunction())
         self.locals: dict[Expression, int] = dict()
 
     def resolve(self, locals: dict[Expression, int]):
@@ -145,7 +145,7 @@ class Interpreter(Visitor):
         value = None
         if stmt.initializer:
             value = self.visit(stmt.initializer, env)
-        env.define(stmt.name.lexeme, value)
+        env.define(stmt.name, value)
 
     @visit.register
     def _(self, stmt: Stmt.Block, env: Environment = global_env):

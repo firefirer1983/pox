@@ -157,7 +157,7 @@ class Parser:
         self.consume(TokenType.LEFT_BRACE, "Expect '{' after )")
         block = self.block()
         logger.info(f"@Stmt.Function")
-        return Stmt.Function(name.lexeme, [arg.lexeme for arg in arguments], block)
+        return Stmt.Function(name, [arg for arg in arguments], block)
 
     @log_trace
     def block(self) -> Stmt.Block:

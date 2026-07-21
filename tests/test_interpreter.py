@@ -199,9 +199,9 @@ class TestInterpretStmt:
         interpreter.visit(stmts[0])
         testfunc = cast(PoxFunction, global_env.get(token_test))
         assert testfunc.arity() == 3
-        assert testfunc.parameters[0] == token_a
-        assert testfunc.parameters[1] == "b"
-        assert testfunc.parameters[2] == "c"
+        assert testfunc.parameters[0].lexeme == "a"
+        assert testfunc.parameters[1].lexeme == "b"
+        assert testfunc.parameters[2].lexeme == "c"
         assert len(testfunc.block.statements) == 1
         ret_stmt = cast(Stmt.Return, testfunc.block.statements[0])
         assert interpreter.visit(ret_stmt.value) == 0

@@ -142,7 +142,7 @@ class TestAstPrinter:
         tokens = Scanner("fun test(){return 0;}").scan_tokens()
         stmt: Stmt.Function = cast(Stmt.Function, Parser(tokens).declaration())
         assert stmt.parameters == []
-        assert stmt.name == "test"
+        assert stmt.name.lexeme == "test"
         assert AstPrinter().visit(stmt) == "fun test(){return 0;}"
 
     def test_parse_class_def_statement(self):
@@ -152,7 +152,7 @@ class TestAstPrinter:
         stmts = _parse(src)
         assert len(stmts) == 1
         stmt = cast(Stmt.Class, stmts[0])
-        assert stmt.name == "C"
+        assert stmt.name.lexeme == "C"
         assert len(stmt.methods) == 0
 
         src = """
@@ -165,14 +165,14 @@ class TestAstPrinter:
         stmts = _parse(src)
         assert len(stmts) == 1
         stmt = cast(Stmt.Class, stmts[0])
-        assert stmt.name == "C"
+        assert stmt.name.lexeme == "C"
         assert len(stmt.methods) == 3
         func1 = stmt.methods[0]
         func2 = stmt.methods[1]
         func3 = stmt.methods[2]
-        assert func1.name == "test_method"
-        assert func2.name == "test_method2"
-        assert func3.name == "test_method3"
+        assert func1.name.lexeme == "test_method"
+        assert func2.name.lexeme == "test_method2"
+        assert func3.name.lexeme == "test_method3"
         assert len(func3.parameters) == 2
 
     def test_parse_attr_get_statement(self):

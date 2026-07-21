@@ -13,11 +13,11 @@ GLOBAL_LEVEL = 0
 class Environment:
     def __init__(self, enclosing: Optional["Environment"] = None):
         self.enclosing = enclosing
-        self.vars: dict[Token, Any] = dict()
+        self.vars: dict[str, Any] = dict()
 
     def define(self, name: Token, value: Any):
         logger.info(f"var {name} = {value}")
-        self.vars[name] = value
+        self.vars[name.lexeme] = value
 
     def get(self, name: Token) -> Any:
         if name.lexeme in self.vars:
@@ -38,7 +38,7 @@ class Environment:
             raise RunError(f"Cant get variable: {name.lexeme} at line: {name.line}")
         return env.vars[name.lexeme]
 
-    def get_ancestor(self, distance: int) -> Environment:
+    def get_ancestor(self, distance: int) -> "Environment":
         cur = self
         for i in range(distance):
             if cur.enclosing:
