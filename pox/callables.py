@@ -1,9 +1,10 @@
-from pox.token import Token
 import logging
 from enum import StrEnum
-from typing import Optional, Any
+from typing import Optional, Any, Generator
+from pox.token import Token
 from .statement import Stmt
-from .base import PoxCallable, Visitor, RunError, ReturnException
+from .expression import Expr
+from .base import PoxCallable, Visitor, RunError, ReturnException, Statement
 from .environment import Environment
 
 
@@ -22,6 +23,9 @@ class PoxFunction(PoxCallable):
         self, stmt: Stmt.Function, env: Environment, initializer: bool = False
     ):
         self.stmt = stmt
+        if not self.stmt.block.statements or type(self.stmt.block.statements[-1]) != Stmt.Return:
+            self.stmt.block.statements.append(Stmt.Return(Expr.Literal(None)))
+
         self.closure = env
         self.initializer = initializer
 
@@ -52,14 +56,13 @@ class PoxFunction(PoxCallable):
         for name, value in zip(self.parameters, arguments):
             env.define(name.lexeme, value)
 
-        breakpoint()
         try:
             interpreter.visit(self.block, env)
         except ReturnException as exc:
             if self.initializer:
                 return self.closure.vars["this"]
             return exc.get_value()
-        assert False, "Not reachable"
+
 
     def bind(self, instance: "PoxInstance") -> "PoxFunction":
         env = Environment(self.closure)

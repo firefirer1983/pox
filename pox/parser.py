@@ -165,6 +165,10 @@ class Parser:
         while not self.check(TokenType.RIGHT_BRACE) and not self.is_end():
             stmt = self.declaration()
             statements.append(stmt)
+
+        # if not statements or type(statements[-1]) != Stmt.Return:
+        #     statements.append(Stmt.Return(Expr.Literal(None)))
+
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block")
         logger.info(f"@Stmt.Block")
         return Stmt.Block(statements)

@@ -249,7 +249,6 @@ class TestInterpretStmt:
           fun count(){
             i = i + 1;
             print(i);
-            return 0;
           }
           return count;
         }
