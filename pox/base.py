@@ -60,6 +60,12 @@ class Statement(ABC):
     def accept(self, visitor: "Visitor"):
         return visitor.visit(self)
 
+    def __str__(self)-> str:
+        return repr(self)
+
+    def __repr__(self)-> str:
+        return f"<{self.__class__.__name__} object 0x{id(self):x}>"
+
 
 class Visitor(ABC):
     @singledispatchmethod

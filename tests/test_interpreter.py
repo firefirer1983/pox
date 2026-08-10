@@ -9,6 +9,10 @@ from pox.scanner import Scanner
 from pox.statement import Stmt
 
 
+def _parse(src: str):
+    return Parser(Scanner(src).scan_tokens()).parse()
+
+
 class TestInterpretExpr:
     def test_parse_literal_expr(self):
         assert Interpreter().visit(Parser(Scanner("5").scan_tokens()).expression()) == 5
@@ -245,6 +249,7 @@ class TestInterpretStmt:
           fun count(){
             i = i + 1;
             print(i);
+            return 0;
           }
           return count;
         }
@@ -273,8 +278,7 @@ class TestInterpretStmt:
         }
         """
         interpreter = Interpreter()
-        tokens = Scanner(src).scan_tokens()
-        stmts = Parser(tokens).parse()
+        stmts = _parse(src)
         assert len(stmts) == 2
         interpreter.visit(stmts[0])
         interpreter.visit(stmts[1])

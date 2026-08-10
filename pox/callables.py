@@ -25,11 +25,17 @@ class PoxFunction(PoxCallable):
         self.closure = env
         self.initializer = initializer
 
+    def __repr__(self)-> str:
+        return self.to_str()
+
+    def __str__(self) -> str:
+        return repr(self)
+
     def arity(self):
         return len(self.stmt.parameters)
 
     def to_str(self) -> str:
-        parameters = ",".join(self.stmt.parameters) or ""
+        parameters = ",".join([param.lexeme for param in self.stmt.parameters]) or ""
         return f"fun<{self.stmt.name.lexeme}({parameters})>"
 
     def call(
@@ -44,8 +50,9 @@ class PoxFunction(PoxCallable):
             raise RunError(f"实参数目:{len(arguments)} != 形参数目:{self.arity()}")
 
         for name, value in zip(self.parameters, arguments):
-            env.define(name, value)
+            env.define(name.lexeme, value)
 
+        breakpoint()
         try:
             interpreter.visit(self.block, env)
         except ReturnException as exc:

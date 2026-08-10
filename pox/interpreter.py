@@ -42,10 +42,16 @@ class TimingFunction(PoxFunction):
     ):
         return time.time()
 
+    def __repr__(self)-> str:
+        return self.to_str()
+
+    def __str__(self):
+        return repr(self)
+
 
 class Interpreter(Visitor):
     def __init__(self):
-        global_env.define(Token("time", TokenType.VAR, "time", 0), TimingFunction())
+        global_env.define("time", TimingFunction())
         self.locals: dict[Expression, int] = dict()
 
     def resolve(self, locals: dict[Expression, int]):
@@ -145,7 +151,7 @@ class Interpreter(Visitor):
         value = None
         if stmt.initializer:
             value = self.visit(stmt.initializer, env)
-        env.define(stmt.name, value)
+        env.define(stmt.name.lexeme, value)
 
     @visit.register
     def _(self, stmt: Stmt.Block, env: Environment = global_env):
@@ -187,7 +193,7 @@ class Interpreter(Visitor):
     @visit.register
     def _(self, stmt: Stmt.Function, env: Environment = global_env):
         func = PoxFunction(stmt, env)
-        env.define(stmt.name, func)
+        env.define(stmt.name.lexeme, func)
         logger.info(f"@Funtion")
 
     @visit.register
@@ -196,7 +202,7 @@ class Interpreter(Visitor):
 
     @visit.register
     def _(self, stmt: Stmt.Class, env: Environment = global_env):
-        env.define(stmt.name, None)
+        env.define(stmt.name.lexeme, None)
         methods = [PoxFunction(m, env) for m in stmt.methods]
         cls = PoxClass(stmt.name, methods)
         env.assign(stmt.name, cls)

@@ -1,6 +1,6 @@
 import logging
 from typing import Optional, Any
-
+from pprint import pformat
 from .base import LiteralTypes, RunError
 from .token import Token
 
@@ -10,14 +10,34 @@ logger = logging.getLogger(__name__)
 GLOBAL_LEVEL = 0
 
 
+def sprintf_env(env: "Environment", spaces: int = 1)-> str:
+    stack: list["Environment"] =[]
+    data = dict()
+    cur = env
+    while cur:
+        stack.append(cur)
+        cur = cur.enclosing
+
+    while stack:
+        cur = stack.pop()
+        data = {**data, **cur.vars}
+    return pformat(data, indent=2)
+
+
 class Environment:
     def __init__(self, enclosing: Optional["Environment"] = None):
         self.enclosing = enclosing
         self.vars: dict[str, Any] = dict()
 
-    def define(self, name: Token, value: Any):
+    def __repr__(self)-> str:
+        return sprintf_env(self)
+
+    def __str__(self) -> str:
+        return repr(self)
+
+    def define(self, name: str, value: Any):
         logger.info(f"var {name} = {value}")
-        self.vars[name.lexeme] = value
+        self.vars[name] = value
 
     def get(self, name: Token) -> Any:
         if name.lexeme in self.vars:

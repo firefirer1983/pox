@@ -60,6 +60,7 @@ class Token:
         self.line = line
 
     def __repr__(self) -> str:
+        return f"{self.token_type}('{self.lexeme}')"
         return f"{self.token_type}('{self.lexeme}') @ {self.line}"
 
     def __str__(self) -> str:
