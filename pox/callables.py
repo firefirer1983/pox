@@ -63,7 +63,6 @@ class PoxFunction(PoxCallable):
                 return self.closure.vars["this"]
             return exc.get_value()
 
-
     def bind(self, instance: "PoxInstance") -> "PoxFunction":
         env = Environment(self.closure)
         env.define("this", instance)

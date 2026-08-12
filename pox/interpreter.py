@@ -1,3 +1,4 @@
+from pox.callables import PoxInstance
 import sys
 import logging
 import time
@@ -68,7 +69,7 @@ class Interpreter(Visitor):
     @singledispatchmethod
     def visit(
         self, expr: Expression | Statement, env: Environment = global_env
-    ) -> LiteralTypes:
+    ) -> Any:
         raise NotImplementedError(type(expr))
 
     @visit.register
@@ -206,3 +207,10 @@ class Interpreter(Visitor):
         methods = [PoxFunction(m, env) for m in stmt.methods]
         cls = PoxClass(stmt.name, methods)
         env.assign(stmt.name, cls)
+
+    @visit.register
+    def _(self, expr: Expr.Get, env: Environment = global_env):
+        instance = self.visit(expr.obj)
+        if isinstance(instance, PoxInstance):
+            return instance.get(expr.name)
+        raise RunError(f"{type(instance)} is not instance")

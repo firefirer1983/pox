@@ -453,4 +453,5 @@ class TestResolverStmt:
         resolver.visit_many(stmts)
         var_stmt = cast(Stmt.Var, stmts[1])
         assert var_stmt.initializer
-        resolver.resolve(var_stmt.initializer)
+        with pytest.raises(ResolveError):
+            resolver.resolve(var_stmt.initializer)

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class Resolver(Visitor):
     def __init__(self):
-        self.scopes: deque[dict[str, bool]] = deque()
+        self.scopes: list[dict[str, bool]] = list()
         self.scopes.append(dict())
         self.locals: dict[Expression, int] = dict()
         self.current_func_type = FunctionType.NONE
@@ -45,7 +45,9 @@ class Resolver(Visitor):
 
     def declare(self, name: Token):
         if self.is_empty:
-            raise ResolveError(f"Resole {name.lexeme} at line: {name.line} Scope Empty!")
+            raise ResolveError(
+                f"Resole {name.lexeme} at line: {name.line} Scope Empty!"
+            )
 
         scope = self.peek()
         if name.lexeme in scope:
@@ -54,7 +56,9 @@ class Resolver(Visitor):
 
     def define(self, name: Token):
         if self.is_empty:
-            raise ResolveError(f"Resolve {name.lexeme} at line: {name.line} Scope Empty!")
+            raise ResolveError(
+                f"Resolve {name.lexeme} at line: {name.line} Scope Empty!"
+            )
         scope = self.peek()
         scope[name.lexeme] = True
 
@@ -68,9 +72,10 @@ class Resolver(Visitor):
 
     def local_resolve(self, expr: Expression, name: str):
         for i, scope in enumerate(reversed(self.scopes)):
-            if name in scope:
-                self.locals[expr] = i
-                return
+            if name not in scope:
+                continue
+            self.locals[expr] = i
+            return
         raise ResolveError(f"Resolve {name} failed!")
 
     def function_resolve(self, stmt: Stmt.Function, func_type: FunctionType):
@@ -207,17 +212,8 @@ class Resolver(Visitor):
             case Stmt.ExprStmt:
                 v = cast(Stmt.ExprStmt, expr)
                 return self.locals[v.expr]
-            case (
-                Expr.Assign
-                | Expr.Binary
-                | Expr.Call
-                | Expr.Grouping
-                | Expr.Logical
-                | Expr.Unary
-                | Expr.Variable
-            ):
+            case Expr.Assign | Expr.Variable:
                 v = cast(Expression, expr)
                 return self.locals[v]
             case _:
-
                 raise ResolveError(f"{expr}: {type(expr)}is not resolvable")
