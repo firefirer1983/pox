@@ -224,8 +224,11 @@ class Parser:
             increment = self.expression()
 
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after for")
-        self.consume(TokenType.LEFT_BRACE, "Expect '{' after for")
-        body = self.block()
+        if self.match(TokenType.LEFT_BRACE):
+            body = self.block()
+        else:
+            body = Stmt.Block([self.statement()])
+
         if increment:
             body.statements = body.statements + [Stmt.ExprStmt(increment)]
 
