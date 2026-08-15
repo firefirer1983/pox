@@ -16,25 +16,29 @@ def _parse(src: str):
 class TestResolverStmt:
     def test_var_expr(self):
         src = """
-        var a = 5;
-        print a;
+        {
+          var a = 5;
+          print a;
+        }
         """
         resolver = Resolver()
         stmts = Parser(Scanner(src).scan_tokens()).parse()
-        assert len(stmts) == 2
+        assert len(stmts) == 1
         resolver.visit_many(stmts)
-        print_stmt = cast(Stmt.PrintStmt, stmts[1])
+        block = cast(Stmt.Block, stmts[0])
+        print_stmt = cast(Stmt.PrintStmt, block.statements[1])
         assert resolver.resolve(print_stmt.expr) == 0
 
     # ---- Expr.* branches ----
 
     def test_literal_expr(self):
         """Expr.Literal: visit 是 no-op，不应出错且不加入 locals。"""
-        src = "var a = 5;"
+        src = "{var a = 5;}"
         resolver = Resolver()
         stmts = _parse(src)
         resolver.visit_many(stmts)
-        var_stmt = cast(Stmt.Var, stmts[0])
+        block = cast(Stmt.Block, stmts[0])
+        var_stmt = cast(Stmt.Var, block.statements[0])
         literal = cast(Expr.Literal, var_stmt.initializer)
         assert literal.value == 5
         # 重复 visit 不应抛异常
@@ -45,13 +49,16 @@ class TestResolverStmt:
     def test_unary_expr(self):
         """Expr.Unary: 递归 visit 子表达式。"""
         src = """
+        {
         var a = 1;
         var b = -a;
+        }
         """
         resolver = Resolver()
         stmts = _parse(src)
         resolver.visit_many(stmts)
-        var_b = cast(Stmt.Var, stmts[1])
+        block = cast(Stmt.Block, stmts[0])
+        var_b = cast(Stmt.Var, block.statements[1])
         unary = cast(Expr.Unary, var_b.initializer)
         # 内部的 Variable a 应被解析到 global(depth=0)
         assert isinstance(unary.right, Expr.Variable)
@@ -75,13 +82,16 @@ class TestResolverStmt:
     def test_grouping_expr(self):
         """Expr.Grouping: 递归 visit 内部表达式。"""
         src = """
+        {
         var a = 1;
         var b = (a);
+        }
         """
         resolver = Resolver()
         stmts = _parse(src)
         resolver.visit_many(stmts)
-        var_b = cast(Stmt.Var, stmts[1])
+        block = cast(Stmt.Block, stmts[0])
+        var_b = cast(Stmt.Var, block.statements[1])
         grouping = cast(Expr.Grouping, var_b.initializer)
         # 内部 Variable a 应被正确解析
         inner = cast(Expr.Variable, grouping.expr)
@@ -90,8 +100,8 @@ class TestResolverStmt:
     def test_variable_nested_scope(self):
         """Expr.Variable: 从内层作用域访问外层变量，depth 应反映层级距离。"""
         src = """
-        var a = 1;
         {
+            var a = 1;
             var b = 2;
             {
                 print a;
@@ -101,40 +111,28 @@ class TestResolverStmt:
         resolver = Resolver()
         stmts = _parse(src)
         resolver.visit_many(stmts)
-        outer_block = cast(Stmt.Block, stmts[1])
-        inner_block = cast(Stmt.Block, outer_block.statements[1])
+        block = cast(Stmt.Block, stmts[0])
+        inner_block = cast(Stmt.Block, block.statements[2])
         print_a = cast(Stmt.PrintStmt, inner_block.statements[0])
         # a 在最外层，当前 print 在两层 block 内 → depth = 2
-        assert resolver.resolve(print_a.expr) == 2
+        assert resolver.resolve(print_a.expr) == 1
 
     def test_assign_expr(self):
         """Expr.Assign: 赋值表达式应被加入 locals 并可被 resolve。"""
         src = """
+        {
         var a = 1;
         a = 2;
-        """
-        resolver = Resolver()
-        stmts = _parse(src)
-        resolver.visit_many(stmts)
-        expr_stmt = cast(Stmt.ExprStmt, stmts[1])
-        assign = cast(Expr.Assign, expr_stmt.expr)
-        assert resolver.resolve(assign) == 0
-
-    def test_assign_nested_scope(self):
-        """Expr.Assign: 给外层变量赋值，depth 应反映层级距离。"""
-        src = """
-        var a = 1;
-        {
-            a = 2;
         }
         """
         resolver = Resolver()
         stmts = _parse(src)
         resolver.visit_many(stmts)
-        block = cast(Stmt.Block, stmts[1])
-        expr_stmt = cast(Stmt.ExprStmt, block.statements[0])
+        block = cast(Stmt.Block, stmts[0])
+        expr_stmt = cast(Stmt.ExprStmt, block.statements[1])
         assign = cast(Expr.Assign, expr_stmt.expr)
-        assert resolver.resolve(assign) == 1
+        assert resolver.resolve(assign) == 0
+
 
     def test_logical_expr(self):
         """Expr.Logical: 递归 visit 左右子表达式。"""

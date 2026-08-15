@@ -55,9 +55,10 @@ class Resolver(Visitor):
         scope = self.peek()
         scope[name.lexeme] = True
 
-    def visit_many(self, stmts: list[Statement]):
+    def visit_many(self, stmts: list[Statement])-> dict[Expression, int]:
         for stmt in stmts:
             self.visit(stmt)
+        return self.locals
 
     @singledispatchmethod
     def visit(self, expr: Expression | Statement) -> LiteralTypes:
@@ -214,6 +215,9 @@ class Resolver(Visitor):
                 return self.locals[v.expr]
             case Expr.Assign | Expr.Variable:
                 v = cast(Expression, expr)
-                return self.locals[v]
+                try:
+                    return self.locals[v]
+                except KeyError:
+                    raise ResolveError(f"{expr}: {type(expr)} resolve failed!")
             case _:
                 raise ResolveError(f"{expr}: {type(expr)}is not resolvable")

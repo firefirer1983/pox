@@ -1,3 +1,4 @@
+from pox.resolver import Resolver
 from pox.base import PoxCallable
 from pox.callables import PoxInstance
 import sys
@@ -57,9 +58,7 @@ class Interpreter(Visitor):
         self.env = self.global_env
         self.env.define("time", TimingFunction())
         self.locals: dict[Expression, int] = dict()
-
-    def resolve(self, locals: dict[Expression, int]):
-        self.locals = {**locals}
+        self.resolver = Resolver()
 
     def lookup_variable(self, name: Token, expr: Expression, env: Environment) -> Any:
         distance = self.locals.get(expr)
@@ -68,6 +67,11 @@ class Interpreter(Visitor):
                 raise RunError(f"Cant find {name.lexeme} at line: {name.line}")
             return self.global_env.get(name)
         return env.get_at(name, distance)
+
+    def visit_many(self, statements: list[Statement]):
+        self.locals = {**self.resolver.visit_many(statements)}
+        for stmt in statements:
+            self.visit(stmt)
 
     @singledispatchmethod
     def visit(self, expr: Expression | Statement) -> Any:
