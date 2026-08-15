@@ -99,6 +99,3 @@ class Environment:
             i += 1
             enclosing = enclosing.enclosing
         return i
-
-
-global_env = Environment()

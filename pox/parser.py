@@ -313,8 +313,9 @@ class Parser:
     def equality(self) -> Expression:
         expr = self.comparison()
         while self.match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL):
+            operator = self.previous()
             right = self.comparison()
-            expr = Expr.Binary(expr, self.previous(), right)
+            expr = Expr.Binary(expr, operator, right)
         return expr
 
     @log_trace

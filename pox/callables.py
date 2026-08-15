@@ -76,9 +76,9 @@ class PoxFunction(PoxCallable):
         return self.stmt.parameters
 
 
-class ClassTye(StrEnum):
+class ClassType(StrEnum):
     NONE = "NONE"
-    CLASS = "CLASSE"
+    CLASS = "CLASS"
     SUPER = "SUPER"
 
 

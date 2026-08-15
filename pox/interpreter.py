@@ -1,3 +1,4 @@
+from pox.base import PoxCallable
 from pox.callables import PoxInstance
 import sys
 import logging
@@ -6,7 +7,7 @@ from typing import cast, Optional, Any
 
 from functools import singledispatchmethod
 from .token import TokenType, Token
-from .environment import Environment, global_env
+from .environment import Environment
 from .base import Statement, ReturnException
 
 from .callables import PoxFunction, PoxClass
@@ -43,7 +44,7 @@ class TimingFunction(PoxFunction):
     ):
         return time.time()
 
-    def __repr__(self)-> str:
+    def __repr__(self) -> str:
         return self.to_str()
 
     def __str__(self):
@@ -52,7 +53,9 @@ class TimingFunction(PoxFunction):
 
 class Interpreter(Visitor):
     def __init__(self):
-        global_env.define("time", TimingFunction())
+        self.global_env = Environment()
+        self.env = self.global_env
+        self.env.define("time", TimingFunction())
         self.locals: dict[Expression, int] = dict()
 
     def resolve(self, locals: dict[Expression, int]):
@@ -61,21 +64,19 @@ class Interpreter(Visitor):
     def lookup_variable(self, name: Token, expr: Expression, env: Environment) -> Any:
         distance = self.locals.get(expr)
         if distance is None:
-            if name.lexeme not in global_env.vars:
+            if name.lexeme not in self.global_env.vars:
                 raise RunError(f"Cant find {name.lexeme} at line: {name.line}")
-            return global_env.get(name)
+            return self.global_env.get(name)
         return env.get_at(name, distance)
 
     @singledispatchmethod
-    def visit(
-        self, expr: Expression | Statement, env: Environment = global_env
-    ) -> Any:
+    def visit(self, expr: Expression | Statement) -> Any:
         raise NotImplementedError(type(expr))
 
     @visit.register
-    def _(self, expr: Expr.Binary, env: Environment = global_env) -> LiteralTypes:
-        left = self.visit(expr.left, env)
-        right = self.visit(expr.right, env)
+    def _(self, expr: Expr.Binary) -> LiteralTypes:
+        left = self.visit(expr.left)
+        right = self.visit(expr.right)
         try:
             match expr.operator.token_type:
                 case TokenType.GREATER:
@@ -111,125 +112,138 @@ class Interpreter(Visitor):
                 case _:
                     raise ParseError()
         except (TypeError, ZeroDivisionError) as exc:
-            logger.error(f"二进制运输错误", exc_info=True)
+            logger.error("二进制运输错误", exc_info=True)
             raise RunError(f"{left} {expr.operator} {right} 二进制运输错误")
 
     @visit.register
-    def _(self, expr: Expr.Literal, env: Environment = global_env) -> LiteralTypes:
+    def _(self, expr: Expr.Literal) -> LiteralTypes:
         return expr.value
 
     @visit.register
-    def _(self, expr: Expr.Unary, env: Environment = global_env) -> LiteralTypes:
-        right = self.visit(expr.right, env)
+    def _(self, expr: Expr.Unary) -> LiteralTypes:
+        right = self.visit(expr.right)
         if expr.operator.token_type == TokenType.MINUS:
             if not isinstance(right, (float, int)):
-                raise ParseError()
+                raise RunError(f"Syntax error, {right} is not number!")
             return -1 * right
         elif expr.operator.token_type == TokenType.BANG:
             return not is_true(right)
         raise ParseError()
 
     @visit.register
-    def _(self, expr: Expr.Grouping, env: Environment = global_env) -> LiteralTypes:
-        return self.visit(expr.expr, env)
+    def _(self, expr: Expr.Grouping) -> LiteralTypes:
+        return self.visit(expr.expr)
 
     @visit.register
-    def _(self, expr: Expr.Variable, env: Environment = global_env) -> LiteralTypes:
-        return env.get(expr.identify)
+    def _(self, expr: Expr.Variable) -> LiteralTypes:
+        return self.lookup_variable(expr.identify, expr, self.env)
 
     @visit.register
-    def _(self, expr: Expr.Assign, env: Environment = global_env) -> LiteralTypes:
-        env.assign(expr.identify, self.visit(expr.value, env))
-        return self.visit(expr.value, env)
+    def _(self, expr: Expr.Assign) -> LiteralTypes:
+        value = self.visit(expr.value)
+        if expr.value in self.locals:
+            self.env.assign_at(expr.identify, value, self.locals[expr.value])
+        else:
+            self.global_env.assign(expr.identify, value)
+        return value
 
     @visit.register
-    def _(self, stmt: Stmt.PrintStmt, env: Environment = global_env):
-        string = literal2str(self.visit(stmt.expr, env))
+    def _(self, stmt: Stmt.PrintStmt):
+        string = literal2str(self.visit(stmt.expr))
         sys.stdout.write(string + "\n")
         sys.stdout.flush()
 
     @visit.register
-    def _(self, stmt: Stmt.ExprStmt, env: Environment = global_env):
-        return self.visit(stmt.expr, env)
+    def _(self, stmt: Stmt.ExprStmt):
+        return self.visit(stmt.expr)
 
     @visit.register
-    def _(self, stmt: Stmt.Var, env: Environment = global_env):
+    def _(self, stmt: Stmt.Var):
         value = None
         if stmt.initializer:
-            value = self.visit(stmt.initializer, env)
-        env.define(stmt.name.lexeme, value)
+            value = self.visit(stmt.initializer, self.env)
+        self.env.define(stmt.name.lexeme, value)
 
     @visit.register
-    def _(self, stmt: Stmt.Block, env: Environment = global_env):
-        env = Environment(env)
-        for statement in stmt.statements:
-            self.visit(statement, env)
+    def _(self, stmt: Stmt.Block):
+        enclosing = self.env
+        try:
+            self.env = Environment(self.env)
+            for statement in stmt.statements:
+                self.visit(statement)
+        finally:
+            self.env = enclosing
 
     @visit.register
-    def _(self, stmt: Stmt.IF, env: Environment = global_env):
-        if is_true(self.visit(stmt.condition, env)):
-            self.visit(stmt.consequent, env)
+    def _(self, stmt: Stmt.IF):
+        if is_true(self.visit(stmt.condition)):
+            self.visit(stmt.consequent)
         elif stmt.alternative:
-            self.visit(stmt.alternative, env)
+            self.visit(stmt.alternative)
 
     @visit.register
-    def _(self, expr: Expr.Logical, env: Environment = global_env):
-        left = self.visit(expr.left, env)
+    def _(self, expr: Expr.Logical):
+        left = self.visit(expr.left)
         if expr.operator.token_type == TokenType.OR:
-            return left if is_true(left) else self.visit(expr.right, env)
+            return left if is_true(left) else self.visit(expr.right)
         elif expr.operator.token_type == TokenType.AND:
             if not is_true(left):
                 return left
-            return self.visit(expr.right, env)
+            return self.visit(expr.right)
         else:
             raise RunError(f"Invalid Operator: {expr.operator.lexeme}")
 
     @visit.register
-    def _(self, stmt: Stmt.While, env: Environment = global_env):
-        while is_true(self.visit(stmt.condition, env)):
-            self.visit(stmt.statement, env)
+    def _(self, stmt: Stmt.While):
+        while is_true(self.visit(stmt.condition)):
+            self.visit(stmt.statement)
 
     @visit.register
-    def _(self, expr: Expr.Call, env: Environment = global_env) -> LiteralTypes:
-        callee = self.visit(expr.expr, env)
-        if isinstance(callee, PoxFunction):
-            arguments = [self.visit(arg, env) for arg in expr.arguments]
+    def _(self, expr: Expr.Call) -> LiteralTypes:
+        callee = self.visit(expr.expr)
+        if isinstance(callee, PoxCallable):
+            arguments = [self.visit(arg) for arg in expr.arguments]
             return callee.call(self, arguments)
         raise RunError(f"{callee} is not PoxFunction")
 
     @visit.register
-    def _(self, stmt: Stmt.Function, env: Environment = global_env):
-        func = PoxFunction(stmt, env)
-        env.define(stmt.name.lexeme, func)
+    def _(self, stmt: Stmt.Function):
+        func = PoxFunction(stmt, self.env)
+        self.env.define(stmt.name.lexeme, func)
         logger.info(f"@Funtion")
 
     @visit.register
-    def _(self, stmt: Stmt.Return, env: Environment = global_env):
-        raise ReturnException(self.visit(stmt.value, env))
+    def _(self, stmt: Stmt.Return):
+        raise ReturnException(self.visit(stmt.value))
 
     @visit.register
-    def _(self, stmt: Stmt.Class, env: Environment = global_env):
-        env.define(stmt.name.lexeme, None)
-        methods = [PoxFunction(m, env) for m in stmt.methods]
+    def _(self, stmt: Stmt.Class):
+        self.env.define(stmt.name.lexeme, None)
+        methods: list[PoxFunction] = list()
+        for m in stmt.methods:
+            initializer = False
+            if m.name.lexeme == "init":
+                initializer = True
+            methods.append(PoxFunction(m, self.env, initializer))
         cls = PoxClass(stmt.name, methods)
-        env.assign(stmt.name, cls)
+        self.env.assign(stmt.name, cls)
 
     @visit.register
-    def _(self, expr: Expr.Get, env: Environment = global_env):
-        instance = self.visit(expr.obj, env)
+    def _(self, expr: Expr.Get):
+        instance = self.visit(expr.obj)
         if not isinstance(instance, PoxInstance):
             raise RunError(f"{type(instance)} is not instance")
         return instance.get(expr.name)
 
     @visit.register
-    def _(self, expr: Expr.Set, env: Environment = global_env):
-        instance = self.visit(expr.obj, env)
+    def _(self, expr: Expr.Set):
+        instance = self.visit(expr.obj)
         if not isinstance(instance, PoxInstance):
             raise RunError(f"{type(instance)} is not instance")
-        value = self.visit(expr.value, env)
+        value = self.visit(expr.value)
         instance.set(expr.name, value)
         return value
 
     @visit.register
-    def _(self, expr: Expr.This, env: Environment = global_env):
-        return self.lookup_variable(expr.keyword, expr, env)
+    def _(self, expr: Expr.This):
+        return self.lookup_variable(expr.keyword, expr, self.env)

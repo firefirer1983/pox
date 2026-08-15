@@ -2,7 +2,6 @@ import time
 from typing import cast
 from pox.token import Token, TokenType
 from pox.callables import PoxFunction
-from pox.environment import global_env
 from pox.interpreter import Interpreter
 from pox.parser import Parser
 from pox.scanner import Scanner
@@ -15,7 +14,7 @@ def _parse(src: str):
 
 class TestInterpretExpr:
     def test_parse_literal_expr(self):
-        assert Interpreter().visit(Parser(Scanner("5").scan_tokens()).expression()) == 5
+        assert Interpreter().visit(Parser(Scanner("5").scan_tokens()).expression(), ) == 5
         assert (
             Interpreter().visit(Parser(Scanner('"abc"').scan_tokens()).expression())
             == "abc"

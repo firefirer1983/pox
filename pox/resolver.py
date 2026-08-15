@@ -1,4 +1,3 @@
-from pox.token import Token
 import logging
 from typing import cast
 from collections import deque
@@ -7,10 +6,10 @@ from functools import singledispatchmethod
 from contextlib import contextmanager
 
 from .base import Statement, ReturnException, ResolveError
-
 from .expression import Expr
+from .token import Token
 from .statement import Stmt
-from .callables import FunctionType, ClassTye
+from .callables import FunctionType, ClassType
 from .base import (
     Visitor,
     Expression,
@@ -26,7 +25,7 @@ class Resolver(Visitor):
         self.scopes: list[dict[str, bool]] = list()
         self.locals: dict[Expression, int] = dict()
         self.current_func_type = FunctionType.NONE
-        self.current_class_type = ClassTye.NONE
+        self.current_class_type = ClassType.NONE
 
     @contextmanager
     def scoping(self):
@@ -169,7 +168,8 @@ class Resolver(Visitor):
     def _(self, stmt: Stmt.Return):
         if self.current_func_type == FunctionType.NONE:
             raise ResolveError("Can't return from top level code.")
-        if self.current_func_type == FunctionType.INITIALIZER and stmt.value != Expr.Literal(None):
+        value = cast(Expr.Literal, stmt.value)
+        if self.current_func_type == FunctionType.INITIALIZER and value != None:
             raise ResolveError("Can't return a value from initializer.")
         if stmt.value:
             self.visit(stmt.value)
@@ -177,7 +177,7 @@ class Resolver(Visitor):
     @visit.register
     def _(self, stmt: Stmt.Class):
         enclosingClass = self.current_class_type
-        self.current_class_type = ClassTye.CLASS
+        self.current_class_type = ClassType.CLASS
 
         self.declare(stmt.name)
         self.define(stmt.name)
@@ -203,7 +203,7 @@ class Resolver(Visitor):
 
     @visit.register
     def _(self, expr: Expr.This):
-        if self.current_class_type is None:
+        if self.current_class_type == ClassType.NONE:
             raise ResolveError(f"use this outside of a class")
         self.local_resolve(expr, "this")
 

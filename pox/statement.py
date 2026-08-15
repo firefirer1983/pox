@@ -15,9 +15,9 @@ class ExprStmt(Statement):
 
 
 class Var(Statement):
-    def __init__(self, name: Token, initilaizer: Optional[Expression] = None):
+    def __init__(self, name: Token, initializer: Optional[Expression] = None):
         self.name = name
-        self.initializer = initilaizer
+        self.initializer = initializer
 
 
 class Block(Statement):
