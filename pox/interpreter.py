@@ -1,17 +1,15 @@
-from pox.resolver import Resolver
-from pox.base import PoxCallable
-from pox.callables import PoxInstance
 import sys
 import logging
 import time
-from typing import cast, Optional, Any
+from typing import cast, Optional, Any, Generator, ContextManager
+from contextlib import contextmanager
 
 from functools import singledispatchmethod
 from .token import TokenType, Token
 from .environment import Environment
-from .base import Statement, ReturnException
+from .resolver import Resolver
 
-from .callables import PoxFunction, PoxClass
+from .callables import PoxFunction, PoxClass, PoxInstance
 from .expression import Expr
 from .statement import Stmt
 from .base import (
@@ -22,6 +20,9 @@ from .base import (
     literal2str,
     is_true,
     RunError,
+    Statement,
+    ReturnException,
+    PoxCallable
 )
 
 
@@ -59,6 +60,14 @@ class Interpreter(Visitor):
         self.env.define("time", TimingFunction())
         self.locals: dict[Expression, int] = dict()
         self.resolver = Resolver()
+
+    @contextmanager
+    def with_context(self, env: Environment)-> Any:
+        enclosing, self.env = self.env, env
+        try:
+            yield env
+        finally:
+            self.env = enclosing
 
     def lookup_variable(self, name: Token, expr: Expression, env: Environment) -> Any:
         distance = self.locals.get(expr)
@@ -165,18 +174,14 @@ class Interpreter(Visitor):
     def _(self, stmt: Stmt.Var):
         value = None
         if stmt.initializer:
-            value = self.visit(stmt.initializer, self.env)
+            value = self.visit(stmt.initializer)
         self.env.define(stmt.name.lexeme, value)
 
     @visit.register
     def _(self, stmt: Stmt.Block):
-        enclosing = self.env
-        try:
-            self.env = Environment(self.env)
+        with self.with_context(Environment(self.env)):
             for statement in stmt.statements:
                 self.visit(statement)
-        finally:
-            self.env = enclosing
 
     @visit.register
     def _(self, stmt: Stmt.IF):
@@ -207,6 +212,7 @@ class Interpreter(Visitor):
         callee = self.visit(expr.expr)
         if isinstance(callee, PoxCallable):
             arguments = [self.visit(arg) for arg in expr.arguments]
+            breakpoint()
             return callee.call(self, arguments)
         raise RunError(f"{callee} is not PoxFunction")
 

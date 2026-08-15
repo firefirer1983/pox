@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, Generator, ContextManager
 from abc import ABC, abstractmethod
 from functools import singledispatchmethod
 
@@ -71,6 +71,9 @@ class Visitor(ABC):
     @singledispatchmethod
     @abstractmethod
     def visit(self, stmt: Statement | Expression) -> Any:
+        raise NotImplementedError()
+
+    def with_context(self, env)-> Any:
         raise NotImplementedError()
 
 

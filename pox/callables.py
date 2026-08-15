@@ -46,21 +46,22 @@ class PoxFunction(PoxCallable):
     ) -> Any:
         arguments = arguments or []
         # 调用的时候从闭包生成新的env，不然多个函数多次调用会打架
-        env = Environment(self.closure)
-        if len(arguments) != self.arity():
-            raise RunError(f"实参数目:{len(arguments)} != 形参数目:{self.arity()}")
 
-        for name, value in zip(self.parameters, arguments):
-            env.define(name.lexeme, value)
+        with interpreter.with_context(Environment(self.closure)) as env:
+            if len(arguments) != self.arity():
+                raise RunError(f"实参数目:{len(arguments)} != 形参数目:{self.arity()}")
 
-        try:
-            interpreter.visit(self.block, env)
-        except ReturnException as exc:
-            if self.initializer:
-                return self.closure.vars["this"]
-            return exc.get_value()
-        else:
-            return None
+            for name, value in zip(self.parameters, arguments):
+                env.define(name.lexeme, value)
+
+            try:
+                interpreter.visit(self.block)
+            except ReturnException as exc:
+                if self.initializer:
+                    return self.closure.vars["this"]
+                return exc.get_value()
+            else:
+                return None
 
     def bind(self, instance: "PoxInstance") -> "PoxFunction":
         env = Environment(self.closure)

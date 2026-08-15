@@ -82,9 +82,8 @@ class TestInterpretStmt:
 
     def test_var_declaration_with_initializer(self):
         interpreter = Interpreter()
-        for stmt in Parser(Scanner("var a = 5;").scan_tokens()).parse():
-            interpreter.visit(stmt)
-            assert interpreter.global_env.get(token_a) == 5
+        interpreter.visit_many(Parser(Scanner("var a = 5;").scan_tokens()).parse())
+        assert interpreter.global_env.get(token_a) == 5
 
     def test_var_mix_statements(self):
         interpreter = Interpreter()
