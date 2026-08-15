@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 class Resolver(Visitor):
     def __init__(self):
         self.scopes: list[dict[str, bool]] = list()
-        self.scopes.append(dict())
         self.locals: dict[Expression, int] = dict()
         self.current_func_type = FunctionType.NONE
         self.current_class_type = ClassTye.NONE
@@ -45,10 +44,7 @@ class Resolver(Visitor):
 
     def declare(self, name: Token):
         if self.is_empty:
-            raise ResolveError(
-                f"Resole {name.lexeme} at line: {name.line} Scope Empty!"
-            )
-
+            return
         scope = self.peek()
         if name.lexeme in scope:
             raise ResolveError(f"{name.lexeme} line: {name.line} is already exists")
@@ -56,9 +52,7 @@ class Resolver(Visitor):
 
     def define(self, name: Token):
         if self.is_empty:
-            raise ResolveError(
-                f"Resolve {name.lexeme} at line: {name.line} Scope Empty!"
-            )
+            return
         scope = self.peek()
         scope[name.lexeme] = True
 
@@ -76,7 +70,6 @@ class Resolver(Visitor):
                 continue
             self.locals[expr] = i
             return
-        raise ResolveError(f"Resolve {name} failed!")
 
     def function_resolve(self, stmt: Stmt.Function, func_type: FunctionType):
         encolsing_func_type = self.current_func_type
@@ -107,16 +100,14 @@ class Resolver(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Variable) -> LiteralTypes:
-        if self.is_empty:
-            raise ResolveError(
-                f"Symbol {expr.identify.lexeme} resolve failed because empty scopes"
-            )
-        scope = self.peek()
-        if expr.identify.lexeme in scope and not scope[expr.identify.lexeme]:
-            raise ResolveError(
-                f"Can't read local variable {expr.identify.lexeme} before initilization."
-            )
+        if not self.is_empty:
+            scope = self.peek()
+            if expr.identify.lexeme in scope and not scope[expr.identify.lexeme]:
+                raise ResolveError(
+                    f"Can't read local variable {expr.identify.lexeme} before initilization."
+                )
         self.local_resolve(expr, expr.identify.lexeme)
+
 
     @visit.register
     def _(self, expr: Expr.Assign) -> LiteralTypes:
@@ -176,9 +167,12 @@ class Resolver(Visitor):
 
     @visit.register
     def _(self, stmt: Stmt.Return):
-        if self.current_func_type != FunctionType.INITIALIZER:
-            raise ReturnException(self.visit(stmt.value))
-        raise ReturnException(None)
+        if self.current_func_type == FunctionType.NONE:
+            raise ResolveError("Can't return from top level code.")
+        if self.current_func_type == FunctionType.INITIALIZER and stmt.value != Expr.Literal(None):
+            raise ResolveError("Can't return a value from initializer.")
+        if stmt.value:
+            self.visit(stmt.value)
 
     @visit.register
     def _(self, stmt: Stmt.Class):
@@ -206,6 +200,12 @@ class Resolver(Visitor):
         # 由于属性名称动态添加，因此无法在resolver做resolve
         self.visit(expr.obj)
         self.visit(expr.value)
+
+    @visit.register
+    def _(self, expr: Expr.This):
+        if self.current_class_type is None:
+            raise ResolveError(f"use this outside of a class")
+        self.local_resolve(expr, "this")
 
     def resolve(self, expr: Expression | Statement) -> int:
         match type(expr):

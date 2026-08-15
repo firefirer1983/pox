@@ -63,7 +63,7 @@ class Interpreter(Visitor):
         if distance is None:
             if name.lexeme not in global_env.vars:
                 raise RunError(f"Cant find {name.lexeme} at line: {name.line}")
-            return global_env.vars[name.lexeme]
+            return global_env.get(name)
         return env.get_at(name, distance)
 
     @singledispatchmethod
@@ -136,6 +136,7 @@ class Interpreter(Visitor):
     @visit.register
     def _(self, expr: Expr.Assign, env: Environment = global_env) -> LiteralTypes:
         env.assign(expr.identify, self.visit(expr.value, env))
+        return self.visit(expr.value, env)
 
     @visit.register
     def _(self, stmt: Stmt.PrintStmt, env: Environment = global_env):
@@ -169,14 +170,13 @@ class Interpreter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Logical, env: Environment = global_env):
+        left = self.visit(expr.left, env)
         if expr.operator.token_type == TokenType.OR:
-            if is_true(self.visit(expr.left, env)):
-                return self.visit(expr.left, env)
-            return self.visit(expr.right, env)
+            return left if is_true(left) else self.visit(expr.right, env)
         elif expr.operator.token_type == TokenType.AND:
-            if is_true(self.visit(expr.left, env)):
-                return self.visit(expr.right, env)
-            return self.visit(expr.left, env)
+            if not is_true(left):
+                return left
+            return self.visit(expr.right, env)
         else:
             raise RunError(f"Invalid Operator: {expr.operator.lexeme}")
 
@@ -210,7 +210,20 @@ class Interpreter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Get, env: Environment = global_env):
-        instance = self.visit(expr.obj)
-        if isinstance(instance, PoxInstance):
-            return instance.get(expr.name)
-        raise RunError(f"{type(instance)} is not instance")
+        instance = self.visit(expr.obj, env)
+        if not isinstance(instance, PoxInstance):
+            raise RunError(f"{type(instance)} is not instance")
+        return instance.get(expr.name)
+
+    @visit.register
+    def _(self, expr: Expr.Set, env: Environment = global_env):
+        instance = self.visit(expr.obj, env)
+        if not isinstance(instance, PoxInstance):
+            raise RunError(f"{type(instance)} is not instance")
+        value = self.visit(expr.value, env)
+        instance.set(expr.name, value)
+        return value
+
+    @visit.register
+    def _(self, expr: Expr.This, env: Environment = global_env):
+        return self.lookup_variable(expr.keyword, expr, env)
