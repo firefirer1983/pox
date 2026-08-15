@@ -222,21 +222,23 @@ primary        ::= "true" | "false" | "nil" | "this"
 
 | 项目 | 标准 Lox | pox 当前实现 |
 |---|---|---|
-| 赋值右部 | `assignment`（右结合，可嵌套） | `or_expr`（不可嵌套） |
-| `or` / `and` | 独立产生式，`*` 循环，左结合 | 混在 `and_expr`，`?` 单层，接受 `"and"\|"or"` |
-| `for` 循环体 | 任意 `statement` | 只能是 `block`（解析期脱糖） |
-| 类方法 | 省略 `fun` 关键字 | 一致（`fun` 在 `declaration()` 层消费，类体直调 `func_declaration()`） |
 | 继承 `<` | 支持 | 未实现 |
 | `super` | 支持 | 未实现 |
-| 赋值左部非法 | 报 `ParseError` | 静默丢弃 `=`，返回左部 |
+
+以下曾经的差异已在代码中修复（2026-08 复核）：
+赋值右结合嵌套（`assignment` 右部递归，`parser.py:281`）、
+赋值左部非法抛 `ParseError`（`parser.py:289`）、
+`or` 左结合可链式（`parser.py:295`）、
+`and` 左结合且优先级高于 `or`（`parser.py:303-310`）、
+`for` 循环体为任意 statement（`parser.py:227-230`）、
+类方法省略 `fun`（与标准一致）。
 
 ## 备注：实现上的几个特点
 
 - **`for` 是脱糖实现**（`parser.py:207`）：解析后被改写成
   `Stmt.Block([initializer, Stmt.While(cond, body)])`，
   increment 被追加到循环体末尾，因此 AST 中没有 For 节点。
-- **`assignment()` 的特殊之处**（`parser.py:274`）：赋值右侧调用的是
-  `self.or_expr()` 而非 `self.assignment()`；且 `and_expr` 中
-  `match(AND, OR)` 后调用的是 `or_expr`。这两处与标准 Lox 实现略有差异。
 - **优先级链**：图 1 中表达式层越靠下优先级越高，
   `primary` 遇到括号时递归回 `expression()`。
+  各表达式层（`assignment`、`or_expr`、`and_expr`、`equality` 等）
+  均已与标准 Lox 一致。

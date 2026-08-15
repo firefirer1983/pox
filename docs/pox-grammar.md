@@ -19,6 +19,8 @@ declaration    ::= class_decl | fun_decl | var_decl | statement ;
                                                                (* declaration, :106 *)
 
 class_decl     ::= "class" IDENTIFIER "{" fun_decl* "}" ;    (* class_declaration, :119 *)
+                   (* 类体直调 func_declaration（:128），不经过消费 "fun" 的
+                      declaration 层，故方法省略 "fun" 关键字，与标准 Lox 一致 *)
 
 fun_decl       ::= "fun" IDENTIFIER "(" [ IDENTIFIER ( "," IDENTIFIER )* ] ")"
                    block ;                                   (* func_declaration, :143 *)
@@ -27,7 +29,7 @@ var_decl       ::= "var" IDENTIFIER [ "=" expression ] ";" ; (* var_declaration,
 
 statement      ::= if_stmt | print_stmt | return_stmt
                  | for_stmt | while_stmt | block | expr_stmt ;
-                                                               (* statement, :239 *)
+                                                               (* statement, :242 *)
 
 if_stmt        ::= "if" "(" expression ")" statement
                    [ "else" statement ] ;                     (* if_stmt, :177 *)
@@ -39,84 +41,79 @@ for_stmt       ::= "for" "("
                      ( var_decl | expression ";" | ";" )   (* 初始化 *)
                      [ expression ] ";"                    (* 条件，缺省为 true *)
                      [ expression ]                        (* 增量 *)
-                   ")" block ;                              (* for_stmt, :207 *)
+                   ")" statement ;                          (* for_stmt, :207 *)
+                   (* 循环体为任意 statement（:227-230）：
+                      若带 "{" 则解析为 block，否则用 Stmt.Block 包住单条语句，
+                      以便把增量追加到体末尾 *)
 
 return_stmt    ::= "return" [ expression ] ";" ;             (* return_stmt, :198 *)
 
-print_stmt     ::= "print" expression ";" ;                  (* print_stmt, :263 *)
+print_stmt     ::= "print" expression ";" ;                  (* print_stmt, :266 *)
 
-expr_stmt      ::= expression ";" ;                          (* expr_stmt, :256 *)
+expr_stmt      ::= expression ";" ;                          (* expr_stmt, :259 *)
 
 block          ::= "{" declaration* "}" ;                    (* block, :163 *)
 
 (* ============ 表达式：优先级自低到高 ============ *)
 
-expression     ::= assignment ;                              (* expression, :270 *)
+expression     ::= assignment ;                              (* expression, :273 *)
 
-assignment     ::= or_expr [ "=" or_expr ] ;                 (* assignment, :274 *)
-                   (* 语义约束：左部为 Variable 时生成 Assign，
-                      为 Get 时生成 Set，否则原样返回左部 *)
+assignment     ::= or_expr [ "=" assignment ] ;              (* assignment, :277 *)
+                   (* 右结合，a = b = 1 可正确嵌套；
+                      语义约束：左部为 Variable 时生成 Assign，
+                      为 Get 时生成 Set，否则抛出 ParseError（:289） *)
 
-or_expr        ::= and_expr [ "or" and_expr ] ;              (* or_expr, :288 *)
+or_expr        ::= and_expr ( "or" and_expr )* ;             (* or_expr, :293 *)
+                   (* 左结合，支持链式，与标准 Lox 一致 *)
 
-and_expr       ::= equality [ ( "and" | "or" ) or_expr ] ;   (* and_expr, :298 *)
+and_expr       ::= equality ( "and" equality )* ;            (* and_expr, :303 *)
+                   (* 左结合，支持链式，与标准 Lox 一致 *)
 
-equality       ::= comparison ( ("==" | "!=") comparison )* ;   (* equality, :308 *)
+equality       ::= comparison ( ("==" | "!=") comparison )* ;   (* equality, :313 *)
 
-comparison     ::= term ( (">" | ">=" | "<" | "<=") term )* ;   (* comparision, :316 *)
+comparison     ::= term ( (">" | ">=" | "<" | "<=") term )* ;   (* comparision, :321 *)
 
-term           ::= factor ( ("+" | "-") factor )* ;          (* term, :331 *)
+term           ::= factor ( ("+" | "-") factor )* ;          (* term, :336 *)
 
-factor         ::= unary ( ("*" | "/") unary )* ;            (* factor, :340 *)
+factor         ::= unary ( ("*" | "/") unary )* ;            (* factor, :345 *)
 
-unary          ::= ("-" | "!") unary | call ;                (* unary, :379 *)
+unary          ::= ("-" | "!") unary | call ;                (* unary, :384 *)
 
-call           ::= primary ( "(" arguments ")" | "." IDENTIFIER )* ;  (* call, :362 *)
+call           ::= primary ( "(" arguments ")" | "." IDENTIFIER )* ;  (* call, :367 *)
 
-arguments      ::= [ expression ( "," expression )* ] ;      (* _call, :348 *)
+arguments      ::= [ expression ( "," expression )* ] ;      (* _call, :353 *)
 
 primary        ::= "true" | "false" | "nil" | "this"
                  | NUMBER | STRING
                  | "(" expression ")"
-                 | IDENTIFIER ;                              (* primary, :386 *)
+                 | IDENTIFIER ;                              (* primary, :391 *)
 ```
 
 ## 与标准 Lox 文法的差异（按实际代码整理）
 
-1. **赋值不可嵌套**：`assignment` 的右部递归调用的是 `or_expr`
-   而非 `assignment`（`parser.py:278`），
-   因此 `a = b = 1;` 中右侧的 `b = 1` 并非按嵌套赋值解析。
-   标准写法应为 `assignment ::= or_expr ( "=" assignment )?`（右结合）。
+1. **继承与 `super` 未实现**：标准 Lox 的
+   `classDecl ::= "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}"`
+   与 `primary` 中的 `"super" "." IDENTIFIER` 在 pox 中均无对应产生式。
+   属于功能缺失，而非文法错误。
 
-2. **`or` / `and` 的解析混在一起**（`parser.py:298-305`）：
-   `and_expr` 中 `match(AND, OR)` 同时接受两种关键字，
-   且右部调用 `or_expr`，使 `and`/`or` 实际上右结合且可相互嵌套；
-   两者都只匹配一次，链式 `a or b or c` 无法在文法层表达。
+## 已与标准一致的项（曾经存在差异，现已修复）
 
-3. **赋值失败时不报错**：`assignment` 中若 `=` 已消费但左部
-   既非 `Variable` 也非 `Get`，函数直接返回左部表达式，
-   已消费的 `=` token 被丢弃，不会抛出 `ParseError`。
-
-4. **`for` 被脱糖**：解析产物为
-   `Block([initializer, While(cond, Block(body + increment))])`，
-   循环体必须是 `{...}` 块（文法中直接写为 `block`），
-   而标准 Lox 允许任意 statement 作为循环体。
-
-5. **类方法省略 `fun` 关键字，与标准 Lox 一致**：
-   `fun` 在 `declaration()`（`parser.py:110`）中被消费，
-   而 `class_declaration` 的类体循环（`parser.py:128`）直接调用
-   `func_declaration()`（其从函数名开始解析，不消费 `fun`），
-   因此方法写作 `class A { m() {} }`；
-   若写成 `class A { fun m() {} }` 反而会因 `consume(IDENTIFIER)`
-   收到 `FUN` token 而报 `ParseError`。
+- 赋值右结合、可嵌套：`assignment` 右部递归调用 `assignment`（`parser.py:281`）。
+- 赋值左部非法时报错：不再静默丢弃 `=`，抛出 `ParseError`（`parser.py:289`）。
+- `or` 左结合、可链式：`or_expr` 使用 `while` 循环（`parser.py:295`）。
+- `and` 左结合、优先级高于 `or`：`and_expr` 使用 `while` 循环，
+  右部为 `equality`，不再回跳 `or_expr`（`parser.py:303-310`）。
+- `for` 循环体为任意 statement：无 `{` 时用 `Stmt.Block` 包住单条语句（`parser.py:227-230`）。
+- 类方法省略 `fun` 关键字：与标准 Lox 一致（`fun` 在 `declaration()` 层消费，
+  类体直调 `func_declaration()`）。
 
 ## 优先级与结合性总表
 
 | 优先级（低→高） | 产生式 | 运算符 | 结合性 |
 |---|---|---|---|
-| 1 | assignment | `=` | 右（受实现限制，见差异 1） |
-| 2 | or_expr | `or` | 右（单层） |
-| 3 | and_expr | `and` / `or` | 右（单层） |
+| 1 | assignment | `=` | 右 |
+| 2 | or_expr | `or` | 左 |
+| 3 | and_expr | `and` | 左 |
 | 4 | equality | `==` `!=` | 左 |
 | 5 | comparison | `>` `>=` `<` `<=` | 左 |
 | 6 | term | `+` `-` | 左 |

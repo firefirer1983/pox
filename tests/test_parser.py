@@ -116,7 +116,7 @@ class TestAstPrinter:
         tokens = Scanner("a = true and true or a").scan_tokens()
         assert (
             AstPrinter().visit(Parser(tokens).expression())
-            == "a=(True and (True or a))"
+            == "a=((True and True) or a)"
         )
 
     def test_parse_while_statement(self):

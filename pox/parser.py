@@ -302,11 +302,11 @@ class Parser:
     @log_trace
     def and_expr(self) -> Expression:
         expr = self.equality()
-        if self.match(TokenType.AND):
+        while self.match(TokenType.AND):
             token = self.previous()
-            right = self.or_expr()
+            right = self.equality()
             logger.info(f"@Expr.Logical")
-            return Expr.Logical(expr, token, right)
+            expr = Expr.Logical(expr, token, right)
         return expr
 
     @log_trace
