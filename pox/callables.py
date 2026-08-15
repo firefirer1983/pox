@@ -23,9 +23,6 @@ class PoxFunction(PoxCallable):
         self, stmt: Stmt.Function, env: Environment, initializer: bool = False
     ):
         self.stmt = stmt
-        if not self.stmt.block.statements or type(self.stmt.block.statements[-1]) != Stmt.Return:
-            self.stmt.block.statements.append(Stmt.Return(Expr.Literal(None)))
-
         self.closure = env
         self.initializer = initializer
 
@@ -62,6 +59,8 @@ class PoxFunction(PoxCallable):
             if self.initializer:
                 return self.closure.vars["this"]
             return exc.get_value()
+        else:
+            return None
 
     def bind(self, instance: "PoxInstance") -> "PoxFunction":
         env = Environment(self.closure)

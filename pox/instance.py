@@ -1,3 +1,4 @@
+from pox.token import Token
 from typing import Any, Optional
 from enum import StrEnum
 
@@ -6,7 +7,7 @@ from .environment import Environment
 from .statement import Stmt
 
 
-class ClassTye(StrEnum):
+class ClassType(StrEnum):
     NONE = "NONE"
     CLASS = "CLASSE"
     SUPER = "SUPER"
@@ -15,7 +16,7 @@ class ClassTye(StrEnum):
 class PoxClass(PoxCallable):
     def __init__(self, name: str, methods: list[PoxFunction]):
         self.name = name
-        self.methods: dict[str, PoxFunction] = {m.stmt.name: m for m in methods}
+        self.methods: dict[str, PoxFunction] = {m.stmt.name.lexeme: m for m in methods}
 
     def find_method(self, name: str) -> None | PoxFunction:
         return self.methods.get(name)

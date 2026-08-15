@@ -311,14 +311,14 @@ class Parser:
 
     @log_trace
     def equality(self) -> Expression:
-        expr = self.comparision()
+        expr = self.comparison()
         while self.match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL):
-            right = self.comparision()
+            right = self.comparison()
             expr = Expr.Binary(expr, self.previous(), right)
         return expr
 
     @log_trace
-    def comparision(self) -> Expression:
+    def comparison(self) -> Expression:
         expr = self.term()
         while self.match(
             TokenType.GREATER,
@@ -357,7 +357,7 @@ class Parser:
             arguments.append(arg)
             if not self.match(TokenType.COMMA):
                 self.consume(
-                    TokenType.RIGHT_PAREN, "Expect ')' after function argment list"
+                    TokenType.RIGHT_PAREN, "Expect ')' after function argument list"
                 )
                 break
             logger.info("@Expr.Call")

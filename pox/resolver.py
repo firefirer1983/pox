@@ -104,7 +104,7 @@ class Resolver(Visitor):
             scope = self.peek()
             if expr.identify.lexeme in scope and not scope[expr.identify.lexeme]:
                 raise ResolveError(
-                    f"Can't read local variable {expr.identify.lexeme} before initilization."
+                    f"Can't read local variable {expr.identify.lexeme} before initialization."
                 )
         self.local_resolve(expr, expr.identify.lexeme)
 

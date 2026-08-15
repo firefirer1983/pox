@@ -76,39 +76,43 @@ class Interpreter(Visitor):
     def _(self, expr: Expr.Binary, env: Environment = global_env) -> LiteralTypes:
         left = self.visit(expr.left, env)
         right = self.visit(expr.right, env)
-        match expr.operator.token_type:
-            case TokenType.GREATER:
-                # pyrefly:ignore[unsupported-operation]
-                return left > right
-            case TokenType.GREATER_EQUAL:
-                # pyrefly:ignore[unsupported-operation]
-                return left >= right
-            case TokenType.LESS:
-                # pyrefly:ignore[unsupported-operation]
-                return left < right
-            case TokenType.LESS_EQUAL:
-                # pyrefly:ignore[unsupported-operation]
-                return left <= right
-            case TokenType.PLUS:
-                # pyrefly:ignore[unsupported-operation]
-                return left + right
-            case TokenType.MINUS:
-                # pyrefly:ignore[unsupported-operation]
-                return left - right
-            case TokenType.STAR:
-                # pyrefly:ignore[unsupported-operation]
-                return left * right
-            case TokenType.SLASH:
-                # pyrefly:ignore[unsupported-operation]
-                return left / right
-            case TokenType.BANG_EQUAL:
-                # pyrefly:ignore[unsupported-operation]
-                return left != right
-            case TokenType.EQUAL_EQUAL:
-                # pyrefly:ignore[unsupported-operation]
-                return left == right
-            case _:
-                raise ParseError()
+        try:
+            match expr.operator.token_type:
+                case TokenType.GREATER:
+                    # pyrefly:ignore[unsupported-operation]
+                    return left > right
+                case TokenType.GREATER_EQUAL:
+                    # pyrefly:ignore[unsupported-operation]
+                    return left >= right
+                case TokenType.LESS:
+                    # pyrefly:ignore[unsupported-operation]
+                    return left < right
+                case TokenType.LESS_EQUAL:
+                    # pyrefly:ignore[unsupported-operation]
+                    return left <= right
+                case TokenType.PLUS:
+                    # pyrefly:ignore[unsupported-operation]
+                    return left + right
+                case TokenType.MINUS:
+                    # pyrefly:ignore[unsupported-operation]
+                    return left - right
+                case TokenType.STAR:
+                    # pyrefly:ignore[unsupported-operation]
+                    return left * right
+                case TokenType.SLASH:
+                    # pyrefly:ignore[unsupported-operation]
+                    return left / right
+                case TokenType.BANG_EQUAL:
+                    # pyrefly:ignore[unsupported-operation]
+                    return left != right
+                case TokenType.EQUAL_EQUAL:
+                    # pyrefly:ignore[unsupported-operation]
+                    return left == right
+                case _:
+                    raise ParseError()
+        except (TypeError, ZeroDivisionError) as exc:
+            logger.error(f"二进制运输错误", exc_info=True)
+            raise RunError(f"{left} {expr.operator} {right} 二进制运输错误")
 
     @visit.register
     def _(self, expr: Expr.Literal, env: Environment = global_env) -> LiteralTypes:
@@ -141,7 +145,7 @@ class Interpreter(Visitor):
     @visit.register
     def _(self, stmt: Stmt.PrintStmt, env: Environment = global_env):
         string = literal2str(self.visit(stmt.expr, env))
-        sys.stdout.write(string)
+        sys.stdout.write(string + "\n")
         sys.stdout.flush()
 
     @visit.register
@@ -187,9 +191,11 @@ class Interpreter(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Call, env: Environment = global_env) -> LiteralTypes:
-        callee = cast(PoxFunction, self.visit(expr.expr, env))
-        arguments = [self.visit(arg, env) for arg in expr.arguments]
-        return callee.call(self, arguments)
+        callee = self.visit(expr.expr, env)
+        if isinstance(callee, PoxFunction):
+            arguments = [self.visit(arg, env) for arg in expr.arguments]
+            return callee.call(self, arguments)
+        raise RunError(f"{callee} is not PoxFunction")
 
     @visit.register
     def _(self, stmt: Stmt.Function, env: Environment = global_env):
