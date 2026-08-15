@@ -69,6 +69,21 @@ class TestAstPrinter:
             AstPrinter().visit(Parser(Scanner("a = 5").scan_tokens()).expression())
             == "a=5"
         )
+        assert (
+            AstPrinter().visit(Parser(Scanner("a = b = 5").scan_tokens()).expression())
+            == "a=b=5"
+        )
+
+    def test_parse_or_expr(self):
+        assert (
+            AstPrinter().visit(Parser(Scanner("a or 5").scan_tokens()).expression())
+            == "(a or 5)"
+        )
+        assert (
+            AstPrinter().visit(Parser(Scanner("a or b or 5").scan_tokens()).expression())
+            == "((a or b) or 5)"
+        )
+
 
     def test_parse_var_stmt(self):
         assert (
@@ -77,6 +92,7 @@ class TestAstPrinter:
             )
             == "var a=5;"
         )
+
 
     def test_parse_block_stmt(self):
         tokens = Scanner("{var a = 5;}").scan_tokens()

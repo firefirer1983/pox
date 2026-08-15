@@ -274,35 +274,37 @@ class Parser:
     def assignment(self) -> Expression:
         expr = self.or_expr()
         if self.match(TokenType.EQUAL):
-            # eq = self.previous()
-            value = self.or_expr()
+            equal = self.previous()
+            value = self.assignment()
+            # value = self.or_expr()
             if isinstance(expr, Expr.Variable):
                 logger.info(f"@Expr.Assign")
                 return Expr.Assign(expr.identify, value)
             elif isinstance(expr, Expr.Get):
                 logger.info(f"@Expr.Set")
                 return Expr.Set(expr.obj, expr.name, value)
+            raise ParseError(f"Invalid {equal} expression")
         return expr
 
     @log_trace
     def or_expr(self) -> Expression:
-        left = self.and_expr()
-        if self.match(TokenType.OR):
+        expr = self.and_expr()
+        while self.match(TokenType.OR):
             token = self.previous()
             right = self.and_expr()
             logger.info(f"@Expr.Logical")
-            return Expr.Logical(left, token, right)
-        return left
+            expr = Expr.Logical(expr, token, right)
+        return expr
 
     @log_trace
     def and_expr(self) -> Expression:
-        left = self.equality()
-        if self.match(TokenType.AND, TokenType.OR):
+        expr = self.equality()
+        if self.match(TokenType.AND):
             token = self.previous()
             right = self.or_expr()
             logger.info(f"@Expr.Logical")
-            return Expr.Logical(left, token, right)
-        return left
+            return Expr.Logical(expr, token, right)
+        return expr
 
     @log_trace
     def equality(self) -> Expression:
