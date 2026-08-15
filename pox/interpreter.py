@@ -122,7 +122,7 @@ class Interpreter(Visitor):
                 raise ParseError()
             return -1 * right
         elif expr.operator.token_type == TokenType.BANG:
-            return bool(right)
+            return not is_true(right)
         raise ParseError()
 
     @visit.register
