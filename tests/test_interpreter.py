@@ -313,8 +313,12 @@ class TestInterpretClass:
         interpreter.visit(stmts[0])
         klass = cast(PoxClass, interpreter.global_env.get(token_foo))
         assert set(klass.methods.keys()) == {"init", "get"}
-        assert klass.find_method("init").arity() == 2
-        assert klass.find_method("get").arity() == 0
+        init_method = klass.find_method("init")
+        assert init_method
+        assert init_method.arity() == 2
+        get_method = klass.find_method("get")
+        assert get_method
+        assert get_method.arity() == 0
         # 没有 init 时 arity 为 0，有 init 时为 init 的形参数
         assert klass.arity() == 2
 

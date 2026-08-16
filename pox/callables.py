@@ -89,7 +89,7 @@ class PoxClass(PoxCallable):
         self.name = name
         self.methods: dict[str, PoxFunction] = {m.stmt.name.lexeme: m for m in methods}
 
-    def find_method(self, name: str) -> None | PoxFunction:
+    def find_method(self, name: str) -> PoxFunction | None:
         return self.methods.get(name)
 
     def call(self, interpreter: Visitor, arguments: Optional[list[Any]] = None):
