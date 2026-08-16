@@ -169,7 +169,12 @@ class Resolver(Visitor):
         if self.current_func_type == FunctionType.NONE:
             raise ResolveError("Can't return from top level code.")
         value = cast(Expr.Literal, stmt.value)
-        if self.current_func_type == FunctionType.INITIALIZER and value != None:
+        # 裸 return 会被 parser 解析成 Expr.Literal(None)，需要比较节点持有的值
+        if (
+            self.current_func_type == FunctionType.INITIALIZER
+            and value != None
+            and value.value != None
+        ):
             raise ResolveError("Can't return a value from initializer.")
         if stmt.value:
             self.visit(stmt.value)

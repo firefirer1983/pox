@@ -1,8 +1,10 @@
 from pox.resolver import Resolver
 import time
 from typing import cast
+import pytest
 from pox.token import Token, TokenType
-from pox.callables import PoxFunction
+from pox.callables import PoxFunction, PoxClass, PoxInstance
+from pox.base import RunError
 from pox.interpreter import Interpreter
 from pox.parser import Parser
 from pox.scanner import Scanner
@@ -284,3 +286,293 @@ class TestInterpretStmt:
         interpreter.with_resolve(stmts)
         interpreter.visit(stmts[0])
         interpreter.visit(stmts[1])
+
+
+token_foo = Token("Foo", TokenType.IDENTIFIER, "Foo", 0)
+token_f = Token("f", TokenType.IDENTIFIER, "f", 0)
+token_b = Token("b", TokenType.IDENTIFIER, "b", 0)
+
+
+class TestInterpretClass:
+    def test_class_definition(self):
+        interpreter = Interpreter()
+        stmts = _parse("class Foo{}")
+        assert len(stmts) == 1
+        interpreter.visit(stmts[0])
+        klass = cast(PoxClass, interpreter.global_env.get(token_foo))
+        assert isinstance(klass, PoxClass)
+        assert klass.name.lexeme == "Foo"
+        assert klass.methods == {}
+        assert klass.arity() == 0
+        assert klass.to_str() == "Class Foo"
+
+    def test_class_definition_with_methods(self):
+        interpreter = Interpreter()
+        stmts = _parse("class Foo{init(a, b){}get(){}}")
+        assert len(stmts) == 1
+        interpreter.visit(stmts[0])
+        klass = cast(PoxClass, interpreter.global_env.get(token_foo))
+        assert set(klass.methods.keys()) == {"init", "get"}
+        assert klass.find_method("init").arity() == 2
+        assert klass.find_method("get").arity() == 0
+        # 没有 init 时 arity 为 0，有 init 时为 init 的形参数
+        assert klass.arity() == 2
+
+    def test_class_instantiation(self):
+        interpreter = Interpreter()
+        stmts = _parse("class Foo{}var a = Foo();")
+        assert len(stmts) == 2
+        interpreter.visit(stmts[0])
+        interpreter.visit(stmts[1])
+        instance = cast(PoxInstance, interpreter.global_env.get(token_a))
+        assert isinstance(instance, PoxInstance)
+        assert instance.klass.name.lexeme == "Foo"
+        assert instance.fields == {}
+
+    def test_init_sets_fields(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{
+          init(a){
+            this.a = a;
+          }
+        }
+        var f = Foo(5);
+        """
+        stmts = _parse(src)
+        interpreter.with_resolve(stmts)
+        interpreter.visit_many(stmts)
+        instance = cast(PoxInstance, interpreter.global_env.get(token_f))
+        assert instance.fields == {"a": 5}
+
+    def test_init_with_bare_return(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{
+          init(){
+            this.x = 1;
+            return;
+          }
+        }
+        var f = Foo();
+        """
+        stmts = _parse(src)
+        interpreter.with_resolve(stmts)
+        interpreter.visit_many(stmts)
+        instance = cast(PoxInstance, interpreter.global_env.get(token_f))
+        assert instance.fields == {"x": 1}
+
+    def test_instance_property_set_and_get(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{}
+        var a = Foo();
+        a.x = 5;
+        a.x;
+        """
+        stmts = _parse(src)
+        assert len(stmts) == 4
+        interpreter.visit_many(stmts)
+        instance = cast(PoxInstance, interpreter.global_env.get(token_a))
+        assert instance.get("x") == 5
+        assert interpreter.visit(stmts[3]) == 5
+
+    def test_instance_property_modify(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{}
+        var a = Foo();
+        a.x = 1;
+        a.x = a.x + 2;
+        a.x = a.x * 3;
+        """
+        stmts = _parse(src)
+        interpreter.visit_many(stmts)
+        instance = cast(PoxInstance, interpreter.global_env.get(token_a))
+        assert instance.get("x") == 9
+
+    def test_method_call(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{
+          method(){
+            return 42;
+          }
+        }
+        var f = Foo();
+        f.method();
+        """
+        stmts = _parse(src)
+        assert len(stmts) == 3
+        interpreter.with_resolve(stmts)
+        interpreter.visit_many(stmts[:2])
+        assert interpreter.visit(stmts[2]) == 42
+
+    def test_method_call_with_params(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{
+          add(a, b){
+            return a + b;
+          }
+        }
+        var f = Foo();
+        f.add(2, 3);
+        """
+        stmts = _parse(src)
+        assert len(stmts) == 3
+        interpreter.with_resolve(stmts)
+        interpreter.visit_many(stmts[:2])
+        assert interpreter.visit(stmts[2]) == 5
+
+    def test_method_call_on_new_instance_expr(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{
+          method(){
+            return 7;
+          }
+        }
+        Foo().method();
+        """
+        stmts = _parse(src)
+        assert len(stmts) == 2
+        interpreter.with_resolve(stmts)
+        interpreter.visit(stmts[0])
+        assert interpreter.visit(stmts[1]) == 7
+
+    def test_method_read_this_field(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{
+          init(){
+            this.x = 10;
+          }
+          get(){
+            return this.x;
+          }
+        }
+        var f = Foo();
+        f.get();
+        """
+        stmts = _parse(src)
+        assert len(stmts) == 3
+        interpreter.with_resolve(stmts)
+        interpreter.visit_many(stmts[:2])
+        assert interpreter.visit(stmts[2]) == 10
+
+    def test_method_modify_this_field(self):
+        interpreter = Interpreter()
+        src = """
+        class Counter{
+          init(){
+            this.count = 0;
+          }
+          inc(){
+            this.count = this.count + 1;
+            return this.count;
+          }
+        }
+        var f = Counter();
+        f.inc();
+        """
+        stmts = _parse(src)
+        assert len(stmts) == 3
+        interpreter.with_resolve(stmts)
+        interpreter.visit_many(stmts[:2])
+        assert interpreter.visit(stmts[2]) == 1
+        assert interpreter.visit(stmts[2]) == 2
+
+    def test_this_call_other_method(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{
+          init(){
+            this.x = 3;
+          }
+          double(n){
+            return n * 2;
+          }
+          compute(){
+            return this.double(this.x);
+          }
+        }
+        var f = Foo();
+        f.compute();
+        """
+        stmts = _parse(src)
+        assert len(stmts) == 3
+        interpreter.with_resolve(stmts)
+        interpreter.visit_many(stmts[:2])
+        assert interpreter.visit(stmts[2]) == 6
+
+    def test_instances_state_independent(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{
+          init(x){
+            this.x = x;
+          }
+          get(){
+            return this.x;
+          }
+        }
+        var a = Foo(1);
+        var b = Foo(2);
+        a.y = 10;
+        b.y = 20;
+        a.get();
+        b.get();
+        """
+        stmts = _parse(src)
+        interpreter.with_resolve(stmts)
+        interpreter.visit_many(stmts)
+        instance_a = cast(PoxInstance, interpreter.global_env.get(token_a))
+        instance_b = cast(PoxInstance, interpreter.global_env.get(token_b))
+        assert instance_a.get("x") == 1
+        assert instance_b.get("x") == 2
+        assert instance_a.get("y") == 10
+        assert instance_b.get("y") == 20
+
+    def test_missing_method_raises(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{}
+        var f = Foo();
+        f.missing();
+        """
+        stmts = _parse(src)
+        interpreter.with_resolve(stmts)
+        interpreter.visit_many(stmts[:2])
+        with pytest.raises(RunError):
+            interpreter.visit(stmts[2])
+
+    def test_get_property_on_class_raises(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{}
+        var f = Foo;
+        f.x;
+        """
+        stmts = _parse(src)
+        interpreter.with_resolve(stmts)
+        interpreter.visit_many(stmts[:2])
+        with pytest.raises(RunError):
+            interpreter.visit(stmts[2])
+
+    def test_instantiate_with_wrong_arity_raises(self):
+        interpreter = Interpreter()
+        src = """
+        class Foo{
+          init(a, b){
+            this.a = a;
+            this.b = b;
+          }
+        }
+        var f = Foo(1);
+        """
+        stmts = _parse(src)
+        interpreter.with_resolve(stmts)
+        interpreter.visit(stmts[0])
+        with pytest.raises(RunError):
+            interpreter.visit(stmts[1])
