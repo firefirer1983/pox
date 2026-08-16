@@ -43,6 +43,9 @@ class Expression(ABC):
     def accept(self, visitor: "Visitor"):
         return visitor.visit(self)
 
+    def __str__(self)-> str:
+        return repr(self)
+
     # def __eq__(self, other) -> bool:
     #     if type(self) != type(other):
     #         return False

@@ -26,8 +26,8 @@ class Literal(Expression):
     def __init__(self, value: LiteralTypes):
         self.value = value
 
-    # def accept(self, visitor: Expr.Visitor):
-    #     return visitor.visit(self)
+    def __repr__(self) -> str:
+        return f"<Expr.Literal object: {self.value}>"
 
 
 class Grouping(Expression):
@@ -39,11 +39,16 @@ class Variable(Expression):
     def __init__(self, identify: Token):
         self.identify = identify
 
+    def __repr__(self) -> str:
+        return f"<Expr.Varialbe object: {self.identify.lexeme}>"
 
 class Assign(Expression):
     def __init__(self, identify: Token, value: Expression):
         self.identify = identify
         self.value = value
+
+    def __repr__(self) -> str:
+        return f"<Expr.Assign object: {self.identify.lexeme} = {self.value}>"
 
 
 class Logical(Expression):

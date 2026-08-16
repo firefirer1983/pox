@@ -59,7 +59,6 @@ class Interpreter(Visitor):
         self.env = self.global_env
         self.env.define("time", TimingFunction())
         self.locals: dict[Expression, int] = dict()
-        self.resolver = Resolver()
 
     @contextmanager
     def with_context(self, env: Environment)-> Any:
@@ -68,6 +67,15 @@ class Interpreter(Visitor):
             yield env
         finally:
             self.env = enclosing
+
+    def with_resolve(self, statements: list[Statement]):
+        result = Resolver().visit_many(statements)
+        logger.info(f"=== RESOLVED ====")
+        for k, v in result.items():
+            logger.info(f"{k}@{v}")
+        logger.info(f"=== END RESOLVED ====")
+
+        self.locals = {**result}
 
     def lookup_variable(self, name: Token, expr: Expression, env: Environment) -> Any:
         distance = self.locals.get(expr)
@@ -78,7 +86,6 @@ class Interpreter(Visitor):
         return env.get_at(name, distance)
 
     def visit_many(self, statements: list[Statement]):
-        self.locals = {**self.resolver.visit_many(statements)}
         for stmt in statements:
             self.visit(stmt)
 
@@ -154,8 +161,8 @@ class Interpreter(Visitor):
     @visit.register
     def _(self, expr: Expr.Assign) -> LiteralTypes:
         value = self.visit(expr.value)
-        if expr.value in self.locals:
-            self.env.assign_at(expr.identify, value, self.locals[expr.value])
+        if expr in self.locals:
+            self.env.assign_at(expr.identify, value, self.locals[expr])
         else:
             self.global_env.assign(expr.identify, value)
         return value
@@ -212,7 +219,6 @@ class Interpreter(Visitor):
         callee = self.visit(expr.expr)
         if isinstance(callee, PoxCallable):
             arguments = [self.visit(arg) for arg in expr.arguments]
-            breakpoint()
             return callee.call(self, arguments)
         raise RunError(f"{callee} is not PoxFunction")
 

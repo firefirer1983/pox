@@ -1,3 +1,4 @@
+from pox.resolver import Resolver
 import time
 from typing import cast
 from pox.token import Token, TokenType
@@ -210,9 +211,11 @@ class TestInterpretStmt:
 
     def test_func_def_params_statements(self):
         interpreter = Interpreter()
+
         tokens = Scanner("fun test(a, b){return a*b;}test(2,3);").scan_tokens()
         stmts = Parser(tokens).parse()
         assert len(stmts) == 2
+        interpreter.with_resolve(stmts)
         interpreter.visit(stmts[0])
         assert interpreter.visit(stmts[1]) == 6
 
@@ -221,6 +224,7 @@ class TestInterpretStmt:
         tokens = Scanner("fun test(){return 0;}test();").scan_tokens()
         stmts = Parser(tokens).parse()
         assert len(stmts) == 2
+        interpreter.with_resolve(stmts)
         interpreter.visit(stmts[0])
         assert interpreter.visit(stmts[1]) == 0
 
@@ -237,29 +241,29 @@ class TestInterpretStmt:
         tokens = Scanner(src).scan_tokens()
         stmts = Parser(tokens).parse()
         assert len(stmts) == 2
+        interpreter.with_resolve(stmts)
         interpreter.visit(stmts[0])
         assert interpreter.visit(stmts[1]) == 55
 
-    def test_nested_fun_call_statement(self):
+    def test_fun_call_closure_statement(self):
         src = """
         fun makeCounter(){
           var i = 0;
           fun count(){
             i = i + 1;
-            print(i);
           }
           return count;
         }
-        var f = makeCounter();
-        f();
+        makeCounter()();
         """
         interpreter = Interpreter()
         tokens = Scanner(src).scan_tokens()
         stmts = Parser(tokens).parse()
-        assert len(stmts) == 3
+        assert len(stmts) == 2
+        interpreter.with_resolve(stmts)
         interpreter.visit(stmts[0])
         interpreter.visit(stmts[1])
-        interpreter.visit(stmts[2])
+        # interpreter.visit(stmts[2])
 
     def test_nested_fun_multi_call_statement(self):
         src = """

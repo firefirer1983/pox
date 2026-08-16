@@ -108,7 +108,6 @@ class Resolver(Visitor):
                 )
         self.local_resolve(expr, expr.identify.lexeme)
 
-
     @visit.register
     def _(self, expr: Expr.Assign) -> LiteralTypes:
         self.visit(expr.value)
@@ -155,9 +154,9 @@ class Resolver(Visitor):
 
     @visit.register
     def _(self, expr: Expr.Call) -> LiteralTypes:
-        self.visit(expr.expr)
         for arg in expr.arguments:
             self.visit(arg)
+        self.visit(expr.expr)
 
     @visit.register
     def _(self, stmt: Stmt.Function):

@@ -1,6 +1,6 @@
 import logging
 from enum import StrEnum
-from typing import Optional, Any, Generator
+from typing import Optional, Any, cast
 from pox.token import Token
 from .statement import Stmt
 from .expression import Expr
@@ -48,6 +48,7 @@ class PoxFunction(PoxCallable):
         # 调用的时候从闭包生成新的env，不然多个函数多次调用会打架
 
         with interpreter.with_context(Environment(self.closure)) as env:
+            env = cast(Environment, env)
             if len(arguments) != self.arity():
                 raise RunError(f"实参数目:{len(arguments)} != 形参数目:{self.arity()}")
 

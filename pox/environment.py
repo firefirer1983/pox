@@ -56,6 +56,7 @@ class Environment:
             )
         if name.lexeme not in env.vars:
             raise RunError(f"Cant get variable: {name.lexeme} at line: {name.line}")
+        logger.info(f"get {name.lexeme}@{distance}")
         return env.vars[name.lexeme]
 
     def get_ancestor(self, distance: int) -> "Environment":
