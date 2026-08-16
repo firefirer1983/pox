@@ -14,7 +14,7 @@ ifeq ($(filter $(BUILD),debug release),)
 $(error 未知的 BUILD="$(BUILD)"，可选值: debug, release)
 endif
 
-BIN_DIR  := build/$(BUILD)
+BIN_DIR  := ./
 BIN      := $(BIN_DIR)/cox
 
 SRCS := $(wildcard *.c)
@@ -26,7 +26,7 @@ WARNINGS := -Wall -Wextra
 # 调试构建: 不优化、带调试符号，并开启 AddressSanitizer/UBSan，
 # 内存错误（越界、use-after-free、double-free）会在运行时直接报告
 CFLAGS_debug  := $(WARNINGS) -std=c11 -g -O0 -fno-omit-frame-pointer \
-                 -fsanitize=address,undefined
+		 -fsanitize=address,undefined
 LDFLAGS_debug := -fsanitize=address,undefined
 
 # 发布构建: 开优化，关断言
@@ -56,7 +56,7 @@ gdb: $(BIN)
 	gdb $(BIN)
 
 clean:
-	rm -rf build
+	rm -rf *.o *.d cox
 
 # 自动生成的头文件依赖：改 .h 也会触发对应 .c 重新编译
 -include $(DEPS)
