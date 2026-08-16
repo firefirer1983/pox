@@ -281,5 +281,6 @@ class TestInterpretStmt:
         interpreter = Interpreter()
         stmts = _parse(src)
         assert len(stmts) == 2
+        interpreter.with_resolve(stmts)
         interpreter.visit(stmts[0])
         interpreter.visit(stmts[1])
